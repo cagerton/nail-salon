@@ -1,0 +1,36 @@
+[package]
+name = "rs"
+version = "0.1.0"
+authors = ["Chris Agerton <cagerton@gmail.com>"]
+edition = "2018"
+
+
+[dependencies]
+bytes = "0.5.4"
+kamadak-exif = "0.5.1"
+wasm-bindgen = "0.2.60"
+console_error_panic_hook = "0.1.6"
+
+[dependencies.image]
+version = "0.23.3"
+default-features = false
+#features = ["jpeg", "png"]
+features = ["gif", "jpeg", "ico", "png", "tiff", "webp", "bmp"]
+
+[dependencies.jpeg-decoder]
+version = "0.1.18"
+default-features = false
+
+
+[profile.release]
+lto = true
+#opt-level = 's'
+#debug = true
+
+
+[lib]
+path = "src/manicure.rs"
+crate-type = ["cdylib", "rlib"]
+
+#[features]
+#default = ["console_error_panic_hook"]
