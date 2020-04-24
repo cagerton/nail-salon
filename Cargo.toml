@@ -1,20 +1,30 @@
 [package]
-name = "rs"
-version = "0.1.0"
+name = "nail-salon"
+description = "Safest place to get your nails done these days"
+version = "0.1.2"
 authors = ["Chris Agerton <cagerton@gmail.com>"]
 edition = "2018"
-
 
 [dependencies]
 bytes = "0.5.4"
 kamadak-exif = "0.5.1"
-wasm-bindgen = "0.2.60"
 console_error_panic_hook = "0.1.6"
+cfg-if = "0.1.10"
+
+#wee_alloc = {version =  "0.4.5", optional = true}
+wee_alloc = "0.4.5"
+
+js-sys = "0.3.37"
+serde="^1.0.106"
+serde_derive = "^1.0.106"
+
+[dependencies.wasm-bindgen]
+version = "0.2.60"
+features = ["serde-serialize"]
 
 [dependencies.image]
 version = "0.23.3"
 default-features = false
-#features = ["jpeg", "png"]
 features = ["gif", "jpeg", "ico", "png", "tiff", "webp", "bmp"]
 
 [dependencies.jpeg-decoder]
@@ -24,13 +34,10 @@ default-features = false
 
 [profile.release]
 lto = true
-#opt-level = 's'
+opt-level = 's'
 #debug = true
 
 
 [lib]
 path = "src/manicure.rs"
 crate-type = ["cdylib", "rlib"]
-
-#[features]
-#default = ["console_error_panic_hook"]
