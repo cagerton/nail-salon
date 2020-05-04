@@ -104,7 +104,6 @@ fn _scale_and_orient(input: &[u8], max_dim: u32) -> Result<Vec<u8>, Box<dyn Erro
         Ok(6) => thumb.rotate90(),
         Ok(7) => thumb.rotate90().flipv(),
         Ok(8) => thumb.rotate270(),
-        Err(err) => return Err(err),
         _ => thumb
     };
 
