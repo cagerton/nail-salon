@@ -6,20 +6,20 @@ authors = ["Chris Agerton <cagerton@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-bytes = "0.5.4"
-kamadak-exif = "0.5.1"
-console_error_panic_hook = "0.1.6"
+bytes = "0.5"
+kamadak-exif = "0.5"
+console_error_panic_hook = "0.1"
 
-js-sys = "0.3.37"
-serde="^1.0.106"
-serde_derive = "^1.0.106"
+js-sys = "0.3"
+serde="^1.0"
+serde_derive = "^1.0"
 
 [dependencies.wasm-bindgen]
-version = "0.2.60"
+version = "0.2"
 features = ["serde-serialize"]
 
 [dependencies.image]
-version = "0.23.3"
+version = "^0.23"
 default-features = false
 features = ["gif", "jpeg", "ico", "png", "tiff", "webp", "bmp"]
 
