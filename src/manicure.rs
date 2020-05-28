@@ -1,7 +1,6 @@
 #[macro_use]
 extern crate serde_derive;
 
-use cfg_if::cfg_if;
 use exif::{In, Tag};
 use image::imageops;
 use image::jpeg::JPEGEncoder;
@@ -13,15 +12,6 @@ use std::io::{self, Cursor, Read};
 use wasm_bindgen::JsValue;
 
 use wasm_bindgen::prelude::*;
-
-cfg_if! {
-   // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global allocator.
-   if #[cfg(feature = "wee_alloc")] {
-       extern crate wee_alloc;
-       #[global_allocator]
-       static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
-   }
-}
 
 #[derive(Debug, Clone)]
 struct NailError {
@@ -105,9 +95,7 @@ fn _scale_and_orient(input: &[u8], max_dim: u32) -> Result<Vec<u8>, Box<dyn Erro
     };
 
     let mut out: Vec<u8> = Vec::new();
-    thumb
-        .write_to(&mut out, ouput_fmt)
-        .expect("Failed to write output");
+    thumb        .write_to(&mut out, ouput_fmt)?;
     Ok(out)
 }
 
@@ -122,6 +110,7 @@ pub fn fast_scale_and_orient(input: &[u8], max_dim: u16) -> Result<Vec<u8>, JsVa
         .unwrap()),
     }
 }
+
 
 fn _fast_scale_and_orient(input: &[u8], max_dim: u16) -> Result<Vec<u8>, Box<dyn Error>> {
     let orientation = get_orientation(input).unwrap_or(0);

@@ -9,10 +9,6 @@ edition = "2018"
 bytes = "0.5.4"
 kamadak-exif = "0.5.1"
 console_error_panic_hook = "0.1.6"
-cfg-if = "0.1.10"
-
-#wee_alloc = {version =  "0.4.5", optional = true}
-wee_alloc = "0.4.5"
 
 js-sys = "0.3.37"
 serde="^1.0.106"
