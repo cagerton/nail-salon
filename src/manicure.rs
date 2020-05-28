@@ -95,7 +95,7 @@ fn _scale_and_orient(input: &[u8], max_dim: u32) -> Result<Vec<u8>, Box<dyn Erro
     };
 
     let mut out: Vec<u8> = Vec::new();
-    thumb        .write_to(&mut out, ouput_fmt)?;
+    thumb.write_to(&mut out, ouput_fmt)?;
     Ok(out)
 }
 
@@ -110,7 +110,6 @@ pub fn fast_scale_and_orient(input: &[u8], max_dim: u16) -> Result<Vec<u8>, JsVa
         .unwrap()),
     }
 }
-
 
 fn _fast_scale_and_orient(input: &[u8], max_dim: u16) -> Result<Vec<u8>, Box<dyn Error>> {
     let orientation = get_orientation(input).unwrap_or(0);
