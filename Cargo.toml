@@ -27,12 +27,10 @@ features = ["gif", "jpeg", "ico", "png", "tiff", "webp", "bmp"]
 version = "0.1.18"
 default-features = false
 
-
 [profile.release]
 lto = true
-opt-level = 's'
-#debug = true
-
+opt-level = 3
+codegen-units = 1
 
 [lib]
 path = "src/manicure.rs"
