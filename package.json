@@ -1,0 +1,20 @@
+{
+  "name": "nail-salon",
+  "collaborators": [
+    "Chris Agerton <cagerton@gmail.com>"
+  ],
+  "description": "The safest place to get your nails done",
+  "version": "0.1.3",
+  "files": [
+    "nail_salon_bg.wasm",
+    "nail_salon.js",
+    "nail_salon_bg.js",
+    "nail_salon.d.ts"
+  ],
+  "main": "nail_salon.js",
+  "types": "nail_salon.d.ts",
+  "devDependencies": {
+    "ts-node": "^8.10.2",
+    "typescript": "^3.9.3"
+  }
+}

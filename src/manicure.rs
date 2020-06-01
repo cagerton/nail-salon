@@ -1,20 +1,17 @@
 #[macro_use]
 extern crate serde_derive;
-
-use exif::{In, Tag};
-use image::imageops;
 use image::jpeg::JPEGEncoder;
+use image::{imageops, GenericImageView};
 use image::{ColorType, ImageEncoder};
 use jpeg_decoder::PixelFormat;
 use std::error::Error;
 use std::fmt;
-use std::io::{self, Cursor, Read};
+use std::io;
+use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsValue;
 
-use wasm_bindgen::prelude::*;
-
 #[derive(Debug, Clone)]
-struct NailError {
+pub struct NailError {
     message: String,
 }
 
@@ -22,38 +19,54 @@ impl Error for NailError {
     fn description(&self) -> &str {
         &self.message.as_str()
     }
-
-    fn cause(&self) -> Option<&(dyn Error)> {
-        // Generic error, underlying cause isn't tracked.
-        None
-    }
 }
 
 impl fmt::Display for NailError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "No thumbnail")
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "NailError: {}", self.message)
     }
 }
 
-fn get_orientation(input: &[u8]) -> Result<u32, Box<dyn Error>> {
-    let data = exif::Reader::new().read_from_container(&mut io::Cursor::new(input))?;
+#[derive(Debug)]
+pub enum MultiErr {
+    NailError(NailError),
+    JpegError(jpeg_decoder::Error),
+    ImageError(image::error::ImageError),
+    ExifErr(exif::Error),
+}
+impl From<NailError> for MultiErr {
+    fn from(err: NailError) -> MultiErr {
+        MultiErr::NailError(err)
+    }
+}
+impl From<jpeg_decoder::Error> for MultiErr {
+    fn from(err: jpeg_decoder::Error) -> MultiErr {
+        MultiErr::JpegError(err)
+    }
+}
+
+impl From<image::error::ImageError> for MultiErr {
+    fn from(err: image::error::ImageError) -> MultiErr {
+        MultiErr::ImageError(err)
+    }
+}
+
+impl From<MultiErr> for JsValue {
+    fn from(val: MultiErr) -> JsValue {
+        JsValue::from_serde(&JSErr {
+            message: format!("Error: {:?}", val),
+            source: SOURCE.to_string(),
+        })
+        .unwrap()
+    }
+}
+
+fn get_orientation(input: &[u8]) -> Result<u32, exif::Error> {
+    let data = exif::Reader::new().read_from_container(&mut io::Cursor::new(&input))?;
     match data.get_field(exif::Tag::Orientation, exif::In::PRIMARY) {
         Some(res) => Ok(res.value.get_uint(0).unwrap_or(0)),
         _ => Ok(0),
     }
-}
-
-#[wasm_bindgen]
-extern "C" {
-    #[wasm_bindgen(js_namespace = console)]
-    fn log(s: &str);
-    #[wasm_bindgen(js_namespace = console, js_name = log)]
-    fn log_u32(a: u32);
-}
-
-#[wasm_bindgen]
-pub fn init_panic_hook() {
-    console_error_panic_hook::set_once();
 }
 
 #[derive(Serialize)]
@@ -62,26 +75,60 @@ pub struct JSErr {
     source: String,
 }
 
-// TODO: Can we use a macro for this boilerplate? Result<_, Box<dyn Error>> to Result<_, JsValue>
+const SOURCE: &str = "nail-salon";
+
+// TODO: Can we create a macro for this boilerplate
 #[wasm_bindgen]
-pub fn scale_and_orient(input: &[u8], max_dim: u32) -> Result<Vec<u8>, JsValue> {
-    match _scale_and_orient(&input, max_dim) {
+pub fn scale_and_orient(input: &[u8], max_w: u16, max_h: u16) -> Result<Vec<u8>, JsValue> {
+    match _scale_and_orient(&input, max_w, max_h) {
         Ok(val) => Ok(val),
-        Err(e) => Err(JsValue::from_serde(&JSErr {
-            message: e.to_string(),
-            source: "nail-salon".into(),
-        })
-        .unwrap()),
+        Err(e) => Err(e.into()),
     }
 }
 
-fn _scale_and_orient(input: &[u8], max_dim: u32) -> Result<Vec<u8>, Box<dyn Error>> {
-    let ouput_fmt = image::ImageFormat::Jpeg;
-    let orientation = get_orientation(input);
+// TODO: Consider allowing config options:
+// * preserve_png
+// * jpg_quality=80
+// * jpg_dct_scale=true
+// * jpg_fix_rotation=true
+
+pub fn _scale_and_orient(input: &[u8], max_w: u16, max_h: u16) -> Result<Vec<u8>, MultiErr> {
+    let in_fmt = image::guess_format(&input)?;
+
+    // try to use dct_scaling if possible
+    if in_fmt == image::ImageFormat::Jpeg {
+        match _jpeg_dct_scale(&input, max_h, max_h) {
+            Ok(fast_res) => return Ok(fast_res),
+            Err(_err) => {
+                // log(format!("Error With DCT scale: {}", err).as_str());
+            }
+        }
+    }
+
     let img = image::load_from_memory(&input)?;
 
-    let thumb = img.thumbnail(max_dim, max_dim);
-    let thumb = match orientation {
+    let (max_w, max_h) = (max_w as u32, max_h as u32);
+    let (orig_w, orig_h) = (img.width(), img.height());
+
+    // Use a rough scaling algorithm scaling unless original is close to the desired size
+    let filter = if orig_w >= 3 * max_w && orig_h >= 3 * max_h {
+        image::imageops::Nearest
+    } else {
+        image::imageops::Triangle
+    };
+
+    // Make sure the min dimension is at least 1px
+    let thumb = if orig_h * max_w < orig_w {
+        let new_w = (orig_w as f64 / orig_h as f64).round() as u32;
+        img.resize_exact(new_w, 1, filter)
+    } else if orig_w * max_h < orig_h {
+        let new_h = (orig_h as f64 / orig_w as f64).round() as u32;
+        img.resize_exact(1, new_h, filter)
+    } else {
+        img.resize(max_w, max_h, filter)
+    };
+
+    let thumb = match get_orientation(&input) {
         // Reference: https://www.daveperrett.com/articles/2012/07/28/exif-orientation-handling-is-a-ghetto/
         // Reference: http://sylvana.net/jpegcrop/exif_orientation.html
         Ok(2) => thumb.fliph(),
@@ -94,38 +141,29 @@ fn _scale_and_orient(input: &[u8], max_dim: u32) -> Result<Vec<u8>, Box<dyn Erro
         _ => thumb,
     };
 
+    let output_fmt = match in_fmt {
+        image::ImageFormat::Png => image::ImageOutputFormat::Png,
+        _ => image::ImageOutputFormat::Jpeg(80),
+    };
+
     let mut out: Vec<u8> = Vec::new();
-    thumb.write_to(&mut out, ouput_fmt)?;
+    thumb.write_to(&mut out, output_fmt)?;
     Ok(out)
 }
 
-#[wasm_bindgen]
-pub fn fast_scale_and_orient(input: &[u8], max_dim: u16) -> Result<Vec<u8>, JsValue> {
-    match _fast_scale_and_orient(input, max_dim) {
-        Ok(val) => Ok(val),
-        Err(e) => Err(JsValue::from_serde(&JSErr {
-            message: e.to_string(),
-            source: "nail-salon".into(),
-        })
-        .unwrap()),
-    }
-}
+fn _jpeg_dct_scale(input: &[u8], max_w: u16, max_h: u16) -> Result<Vec<u8>, MultiErr> {
+    let orientation = get_orientation(&input).unwrap_or(0);
 
-fn _fast_scale_and_orient(input: &[u8], max_dim: u16) -> Result<Vec<u8>, Box<dyn Error>> {
-    let orientation = get_orientation(input).unwrap_or(0);
-
-    let mut decoder = jpeg_decoder::Decoder::new(io::Cursor::new(input));
-    decoder.scale(max_dim, max_dim)?;
+    let mut decoder = jpeg_decoder::Decoder::new(io::Cursor::new(&input));
+    decoder.scale(max_w, max_h)?;
 
     let metadata = decoder.info().unwrap();
-
-    // We're only optimizing RGB for now
     match metadata.pixel_format {
         PixelFormat::RGB24 => (),
         // We can add support for these CMYK, L8 in the future if needed.
-        _ => {
+        pixel_format => {
             return Err(NailError {
-                message: "Unsupported format".into(),
+                message: format!("Unsupported format: {:?}", pixel_format),
             }
             .into())
         }
@@ -149,161 +187,31 @@ fn _fast_scale_and_orient(input: &[u8], max_dim: u16) -> Result<Vec<u8>, Box<dyn
         _ => img_buf,
     };
 
+    // Now resize as needed
+    let (max_w, max_h) = (max_w as u32, max_h as u32);
+    let (width, height) = img_buf.dimensions();
+
+    let img_buf = if height * max_w < width {
+        let new_w = (width as f64 / height as f64).round() as u32;
+        imageops::resize(&img_buf, new_w, 1, imageops::Triangle)
+    } else if width * max_w < height {
+        let new_h = (height as f64 / width as f64).round() as u32;
+        imageops::resize(&img_buf, 1, new_h, imageops::Triangle)
+    } else {
+        let ratio = (width as f64 / max_w as f64).max(height as f64 / max_h as f64);
+        let width = (width as f64 / ratio).round() as u32;
+        let height = (height as f64 / ratio).round() as u32;
+        imageops::resize(&img_buf, width, height, imageops::Triangle)
+    };
+
     let out: Vec<u8> = Vec::new();
     let mut curs = io::Cursor::new(out);
 
-    let height = if orientation >= 5 {
-        metadata.width
-    } else {
-        metadata.height
-    };
-    let width = if orientation >= 5 {
-        metadata.height
-    } else {
-        metadata.width
-    };
+    let (width, height) = img_buf.dimensions();
 
-    let enc = JPEGEncoder::new_with_quality(&mut curs, 90);
+    let enc = JPEGEncoder::new_with_quality(&mut curs, 80);
 
-    enc.write_image(
-        &img_buf.as_ref(),
-        width as u32,
-        height as u32,
-        ColorType::Rgb8,
-    )?;
+    enc.write_image(&img_buf.as_ref(), width, height, ColorType::Rgb8)?;
 
     Ok(curs.into_inner())
-}
-
-#[wasm_bindgen]
-pub fn embedded_thumbnail(input: &[u8]) -> Result<Vec<u8>, JsValue> {
-    match _embedded_thumbnail(input) {
-        Ok(val) => Ok(val),
-        Err(e) => Err(JsValue::from_serde(&JSErr {
-            message: e.to_string(),
-            source: "nail-salon".into(),
-        })
-        .unwrap()),
-    }
-}
-
-fn _embedded_thumbnail(input: &[u8]) -> Result<Vec<u8>, Box<dyn Error>> {
-    let mut curs = Cursor::new(input);
-
-    let meta = exif::Reader::new().read_from_container(&mut curs)?;
-
-    let thumb_compression = match meta.get_field(Tag::Compression, In::THUMBNAIL) {
-        Some(field) => field.value.get_uint(0),
-        _ => {
-            return Err(NailError {
-                message: "No thumbnail".into(),
-            }
-            .into())
-        }
-    };
-
-    match thumb_compression {
-        Some(6) => (),
-        _ => {
-            return Err(NailError {
-                message: "Unsupported thumbnail compression".into(),
-            }
-            .into())
-        }
-    };
-    let offset = meta
-        .get_field(Tag::JPEGInterchangeFormat, In::THUMBNAIL)
-        .unwrap()
-        .value
-        .get_uint(0)
-        .unwrap();
-
-    let length = meta
-        .get_field(Tag::JPEGInterchangeFormatLength, In::THUMBNAIL)
-        .unwrap()
-        .value
-        .get_uint(0)
-        .unwrap();
-
-    let mut curs = Cursor::new(input);
-    curs.set_position((offset + 12) as u64);
-
-    let mut out = Vec::new();
-    let mut curs = curs.clone();
-    curs.set_position((offset + 12) as u64);
-    curs.take((offset + 12 + length) as u64)
-        .read_to_end(&mut out)?;
-    Ok(out)
-}
-
-#[derive(Serialize)]
-pub struct ExifItem {
-    ifd: u16,
-    tag: u16,
-    desc: String,
-    value: String,
-}
-
-#[wasm_bindgen(typescript_custom_section)]
-const EXIF_DATA_FORMAT: &'static str = r#"
-interface ExifItem {
-    ifd: number;
-    tag: number;
-    desc: string;
-    value: string;
-}
-
-interface ImageMetadata {
-    primary: ExifItem[];
-    thumbnail: ExifItem[];
-}
-"#;
-
-#[wasm_bindgen(typescript_type = "EXIF_DATA_FORMAT")]
-#[derive(Serialize)]
-pub struct ImageMetadata {
-    primary: Vec<ExifItem>,
-    thumbnail: Vec<ExifItem>,
-}
-
-/// Extract image metadata
-#[wasm_bindgen(typescript_type = "(input: Uint8Array) => ImageMetadata")]
-pub fn exif_data(input: &[u8]) -> Result<JsValue, JsValue> {
-    match _exif_data(input) {
-        Ok(val) => Ok(JsValue::from_serde(&val).unwrap()),
-        Err(e) => Err(JsValue::from_serde(&JSErr {
-            message: e.to_string(),
-            source: "nail-salon".into(),
-        })
-        .unwrap()),
-    }
-}
-
-fn _exif_data(input: &[u8]) -> Result<ImageMetadata, Box<dyn Error>> {
-    let mut curs = Cursor::new(input);
-    let exif_data = exif::Reader::new().read_from_container(&mut curs)?;
-
-    let mut primary: Vec<ExifItem> = Vec::new();
-    let mut thumbnail: Vec<ExifItem> = Vec::new();
-
-    for field in exif_data.fields() {
-        if Tag::MakerNote == field.tag {
-            continue;
-        }
-
-        let item = ExifItem {
-            ifd: field.ifd_num.index(),
-            tag: field.tag.number(),
-            desc: field.tag.description().unwrap_or("").to_string(),
-            value: field.display_value().to_string(),
-        };
-
-        match field.ifd_num {
-            In::THUMBNAIL => thumbnail.push(item),
-            _ => primary.push(item),
-            // _ => panic!() // for now
-        }
-    }
-
-    Ok(ImageMetadata { primary, thumbnail })
 }
