@@ -15,5 +15,7 @@ jobs:
     - uses: actions/checkout@v2
     - name: Install
       run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+    - name: Rust tests
+      run: cargo test
     - name: Wasm Pack
       run: wasm-pack build  --target nodejs
