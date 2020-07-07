@@ -79,6 +79,37 @@ pub struct JSErr {
 
 const SOURCE: &str = "nail-salon";
 
+#[wasm_bindgen]
+pub struct Dimensions {
+    pub width: u32,
+    pub height: u32,
+}
+
+#[wasm_bindgen]
+pub fn dimensions(input: &[u8]) -> Result<Dimensions, JsValue> {
+    match image::load_from_memory(&input) {
+        Ok(img) => Ok(Dimensions {
+            width: img.width(),
+            height: img.height(),
+        }),
+        Err(e) => Err(MultiErr::from(e).into())
+    }
+}
+
+#[wasm_bindgen]
+pub struct ScaleAndOrientResult {
+    thumbnail: Vec<u8>,
+    pub width: u32,
+    pub height: u32,
+}
+
+#[wasm_bindgen]
+impl ScaleAndOrientResult {
+    pub fn thumbnail(&self) -> Vec<u8> {
+        self.thumbnail.clone()
+    }
+}
+
 // TODO: Can we create a macro for this boilerplate
 #[wasm_bindgen]
 pub fn scale_and_orient(
@@ -87,7 +118,7 @@ pub fn scale_and_orient(
     target_h: u16,
     cover: bool,
     down_only: bool,
-) -> Result<Vec<u8>, JsValue> {
+) -> Result<ScaleAndOrientResult, JsValue> {
     Ok(_scale_and_orient(
         &input, target_w, target_h, cover, down_only,
     )?)
@@ -105,7 +136,7 @@ pub fn _scale_and_orient(
     target_h: u16,
     cover: bool,
     down_only: bool,
-) -> Result<Vec<u8>, MultiErr> {
+) -> Result<ScaleAndOrientResult, MultiErr> {
     let in_fmt = image::guess_format(&input)?;
 
     // try to use dct_scaling if possible
@@ -157,7 +188,11 @@ pub fn _scale_and_orient(
     };
     let mut out: Vec<u8> = Vec::new();
     thumb.write_to(&mut out, output_fmt)?;
-    Ok(out)
+    Ok(ScaleAndOrientResult {
+        thumbnail: out,
+        width: thumb.width(),
+        height: thumb.height(),
+    })
 }
 
 fn _jpeg_dct_scale(
@@ -166,7 +201,7 @@ fn _jpeg_dct_scale(
     target_h: u16,
     cover: bool,
     down_only: bool,
-) -> Result<Vec<u8>, MultiErr> {
+) -> Result<ScaleAndOrientResult, MultiErr> {
     let orientation = get_orientation(&input).unwrap_or(0);
 
     let mut decoder = jpeg_decoder::Decoder::new(io::Cursor::new(&input));
@@ -223,7 +258,11 @@ fn _jpeg_dct_scale(
 
     enc.write_image(&img_buf.as_ref(), resized_w, resized_h, ColorType::Rgb8)?;
 
-    Ok(curs.into_inner())
+    Ok(ScaleAndOrientResult {
+        thumbnail: curs.into_inner(),
+        width: resized_w,
+        height: resized_h,
+    })
 }
 
 pub fn scale_dimensions(

@@ -37,7 +37,7 @@ function main() {
         let tStart = performance.now();
         try {
             const res = nail_salon.scale_and_orient(raw, 128, 128, true, true);
-            fs.writeFileSync(outPath, res);
+            fs.writeFileSync(outPath, res.thumbnail());
             console.log(` + ${file} -- ${(performance.now() - tStart).toFixed(3)}ms`);
             stats.successes++;
         } catch (e) {
