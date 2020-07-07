@@ -34,11 +34,13 @@ pub enum MultiErr {
     ImageError(image::error::ImageError),
     ExifErr(exif::Error),
 }
+
 impl From<NailError> for MultiErr {
     fn from(err: NailError) -> MultiErr {
         MultiErr::NailError(err)
     }
 }
+
 impl From<jpeg_decoder::Error> for MultiErr {
     fn from(err: jpeg_decoder::Error) -> MultiErr {
         MultiErr::JpegError(err)
@@ -79,11 +81,16 @@ const SOURCE: &str = "nail-salon";
 
 // TODO: Can we create a macro for this boilerplate
 #[wasm_bindgen]
-pub fn scale_and_orient(input: &[u8], max_w: u16, max_h: u16) -> Result<Vec<u8>, JsValue> {
-    match _scale_and_orient(&input, max_w, max_h) {
-        Ok(val) => Ok(val),
-        Err(e) => Err(e.into()),
-    }
+pub fn scale_and_orient(
+    input: &[u8],
+    target_w: u16,
+    target_h: u16,
+    cover: bool,
+    down_only: bool,
+) -> Result<Vec<u8>, JsValue> {
+    Ok(_scale_and_orient(
+        &input, target_w, target_h, cover, down_only,
+    )?)
 }
 
 // TODO: Consider allowing config options:
@@ -92,42 +99,45 @@ pub fn scale_and_orient(input: &[u8], max_w: u16, max_h: u16) -> Result<Vec<u8>,
 // * jpg_dct_scale=true
 // * jpg_fix_rotation=true
 
-pub fn _scale_and_orient(input: &[u8], max_w: u16, max_h: u16) -> Result<Vec<u8>, MultiErr> {
+pub fn _scale_and_orient(
+    input: &[u8],
+    target_w: u16,
+    target_h: u16,
+    cover: bool,
+    down_only: bool,
+) -> Result<Vec<u8>, MultiErr> {
     let in_fmt = image::guess_format(&input)?;
 
     // try to use dct_scaling if possible
     if in_fmt == image::ImageFormat::Jpeg {
-        match _jpeg_dct_scale(&input, max_h, max_h) {
+        match _jpeg_dct_scale(&input, target_h, target_w, cover, down_only) {
             Ok(fast_res) => return Ok(fast_res),
             Err(_err) => {
                 // log(format!("Error With DCT scale: {}", err).as_str());
             }
         }
     }
-
     let img = image::load_from_memory(&input)?;
 
-    let (max_w, max_h) = (max_w as u32, max_h as u32);
     let (orig_w, orig_h) = (img.width(), img.height());
+    let (resized_w, resized_h) = scale_dimensions(
+        orig_w,
+        orig_h,
+        target_w as u32,
+        target_h as u32,
+        cover,
+        down_only,
+    );
 
     // Use a rough scaling algorithm scaling unless original is close to the desired size
-    let filter = if orig_w >= 3 * max_w && orig_h >= 3 * max_h {
+    // TODO: consider a cleaner formula here
+    let filter = if orig_w > (3 * resized_w) {
         image::imageops::Nearest
     } else {
         image::imageops::Triangle
     };
 
-    // Make sure the min dimension is at least 1px
-    let thumb = if orig_h * max_w < orig_w {
-        let new_w = (orig_w as f64 / orig_h as f64).round() as u32;
-        img.resize_exact(new_w, 1, filter)
-    } else if orig_w * max_h < orig_h {
-        let new_h = (orig_h as f64 / orig_w as f64).round() as u32;
-        img.resize_exact(1, new_h, filter)
-    } else {
-        img.resize(max_w, max_h, filter)
-    };
-
+    let thumb = img.resize_exact(resized_w, resized_h, filter);
     let thumb = match get_orientation(&input) {
         // Reference: https://www.daveperrett.com/articles/2012/07/28/exif-orientation-handling-is-a-ghetto/
         // Reference: http://sylvana.net/jpegcrop/exif_orientation.html
@@ -145,17 +155,22 @@ pub fn _scale_and_orient(input: &[u8], max_w: u16, max_h: u16) -> Result<Vec<u8>
         image::ImageFormat::Png => image::ImageOutputFormat::Png,
         _ => image::ImageOutputFormat::Jpeg(80),
     };
-
     let mut out: Vec<u8> = Vec::new();
     thumb.write_to(&mut out, output_fmt)?;
     Ok(out)
 }
 
-fn _jpeg_dct_scale(input: &[u8], max_w: u16, max_h: u16) -> Result<Vec<u8>, MultiErr> {
+fn _jpeg_dct_scale(
+    input: &[u8],
+    target_w: u16,
+    target_h: u16,
+    cover: bool,
+    down_only: bool,
+) -> Result<Vec<u8>, MultiErr> {
     let orientation = get_orientation(&input).unwrap_or(0);
 
     let mut decoder = jpeg_decoder::Decoder::new(io::Cursor::new(&input));
-    decoder.scale(max_w, max_h)?;
+    decoder.scale(target_w, target_h)?;
 
     let metadata = decoder.info().unwrap();
     match metadata.pixel_format {
@@ -187,31 +202,102 @@ fn _jpeg_dct_scale(input: &[u8], max_w: u16, max_h: u16) -> Result<Vec<u8>, Mult
         _ => img_buf,
     };
 
-    // Now resize as needed
-    let (max_w, max_h) = (max_w as u32, max_h as u32);
-    let (width, height) = img_buf.dimensions();
+    let (scaled_w, scaled_h) = img_buf.dimensions();
+    let (resized_w, resized_h) = scale_dimensions(
+        scaled_w,
+        scaled_h,
+        target_w as u32,
+        target_h as u32,
+        cover,
+        down_only,
+    );
 
-    let img_buf = if height * max_w < width {
-        let new_w = (width as f64 / height as f64).round() as u32;
-        imageops::resize(&img_buf, new_w, 1, imageops::Triangle)
-    } else if width * max_w < height {
-        let new_h = (height as f64 / width as f64).round() as u32;
-        imageops::resize(&img_buf, 1, new_h, imageops::Triangle)
-    } else {
-        let ratio = (width as f64 / max_w as f64).max(height as f64 / max_h as f64);
-        let width = (width as f64 / ratio).round() as u32;
-        let height = (height as f64 / ratio).round() as u32;
-        imageops::resize(&img_buf, width, height, imageops::Triangle)
-    };
+    let img_buf = imageops::resize(&img_buf, resized_w, resized_h, imageops::Triangle);
 
     let out: Vec<u8> = Vec::new();
     let mut curs = io::Cursor::new(out);
 
-    let (width, height) = img_buf.dimensions();
+    let (resized_w, resized_h) = img_buf.dimensions();
 
     let enc = JPEGEncoder::new_with_quality(&mut curs, 80);
 
-    enc.write_image(&img_buf.as_ref(), width, height, ColorType::Rgb8)?;
+    enc.write_image(&img_buf.as_ref(), resized_w, resized_h, ColorType::Rgb8)?;
 
     Ok(curs.into_inner())
+}
+
+pub fn scale_dimensions(
+    orig_w: u32,
+    orig_h: u32,
+    target_w: u32,
+    target_h: u32,
+    cover: bool,
+    down_only: bool,
+) -> (u32, u32) {
+    let h_ratio = target_h as f64 / orig_h as f64;
+    let w_ratio = target_w as f64 / orig_w as f64;
+
+    // default (shrink to fit) mode prefers to scale by the smaller ratio,
+    // whereas cover mode scales by the larger ratio
+    let ratio = if cover ^ (h_ratio > w_ratio) {
+        w_ratio
+    } else {
+        h_ratio
+    };
+
+    if down_only && ratio > 1.0 {
+        return (orig_w, orig_h);
+    }
+
+    let scaled_w = (orig_w as f64 * ratio).round() as u32;
+    let scaled_h = (orig_h as f64 * ratio).round() as u32;
+
+    // keep at least one pixel
+    if scaled_w == 0 {
+        return ((orig_w as f64 / orig_h as f64).round() as u32, 1);
+    }
+    if scaled_h == 0 {
+        return (1, (orig_h as f64 / orig_w as f64).round() as u32);
+    }
+
+    (scaled_w, scaled_h)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_scale_dimensions() {
+        // no-scale
+        assert_eq!(scale_dimensions(64, 64, 64, 64, true, true), (64, 64));
+        assert_eq!(scale_dimensions(1, 1, 64, 64, true, true), (1, 1));
+        assert_eq!(scale_dimensions(64, 1, 64, 64, true, true), (64, 1));
+        assert_eq!(scale_dimensions(1, 64, 64, 64, true, true), (1, 64));
+
+        // fit
+        assert_eq!(scale_dimensions(64, 32, 32, 32, false, true), (32, 16));
+        assert_eq!(scale_dimensions(32, 64, 32, 32, false, true), (16, 32));
+
+        // cover
+        assert_eq!(scale_dimensions(64, 32, 32, 32, true, true), (64, 32));
+        assert_eq!(scale_dimensions(32, 64, 32, 32, true, true), (32, 64));
+
+        assert_eq!(scale_dimensions(64, 32, 16, 16, true, true), (32, 16));
+        assert_eq!(scale_dimensions(32, 64, 16, 16, true, true), (16, 32));
+
+        // narrow cover, down only
+        assert_eq!(scale_dimensions(64, 16, 32, 32, true, true), (64, 16));
+
+        // narrow cover, up
+        assert_eq!(scale_dimensions(64, 16, 32, 32, true, false), (128, 32));
+
+        // narrow down-only
+        assert_eq!(scale_dimensions(64, 2, 32, 32, false, true), (32, 1));
+        assert_eq!(scale_dimensions(2, 64, 32, 32, false, true), (1, 32));
+
+        // narrow fit, up
+        assert_eq!(scale_dimensions(8, 16, 32, 32, false, false), (16, 32));
+        assert_eq!(scale_dimensions(16, 8, 32, 32, false, false), (32, 16));
+    }
 }
