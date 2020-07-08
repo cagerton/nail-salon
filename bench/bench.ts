@@ -21,6 +21,7 @@ function main() {
     const stats = {
         failures: 0,
         successes: 0,
+        timing: 0,
     };
 
     const files = fs.readdirSync(in_dir)
@@ -36,12 +37,18 @@ function main() {
 
         let tStart = performance.now();
         try {
-            const res = nail_salon.scale_and_orient(raw, 128, 128, true, true);
-            fs.writeFileSync(outPath, res);
-            console.log(` + ${file} -- ${(performance.now() - tStart).toFixed(3)}ms`);
+            const thumb = nail_salon.scale_and_orient(raw, 128, 128, true, true);
+            nail_salon.image_info(thumb);
+            const timing = performance.now() - tStart;
+            stats.timing += timing;
+            console.log(` + ${file} -- ${(timing).toFixed(3)}ms`);
             stats.successes++;
+            fs.writeFileSync(outPath, thumb);
+
         } catch (e) {
-            console.error(`ERR: ${file} -- ${performance.now() - tStart}`,e);
+            const timing = performance.now() - tStart;
+            stats.timing += timing;
+            console.error(`ERR: ${file} -- ${(timing).toFixed(3)}ms`, e);
             fs.copyFileSync(origPath, badPath);
             stats.failures++;
         }
