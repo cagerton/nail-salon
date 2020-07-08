@@ -263,6 +263,44 @@ pub fn scale_dimensions(
     (scaled_w, scaled_h)
 }
 
+#[derive(Serialize)]
+pub struct ImageInfo {
+    format: String,
+    width: u32,
+    height: u32,
+}
+
+
+#[wasm_bindgen(typescript_custom_section)]
+const TS_APPEND_CONTENT: &'static str = r#"
+export interface ImageInfo {
+    format: string,
+    width: number,
+    height: number
+}
+
+export function image_info(input: Uint8Array): ImageInfo;
+"#;
+
+
+#[wasm_bindgen(skip_typescript)]
+pub fn image_info(input: &[u8]) -> Result<JsValue, JsValue> {
+    Ok(JsValue::from_serde(&_image_info(&input)?).unwrap())
+    // Ok(_image_info(&input)?)
+}
+
+pub fn _image_info(input: &[u8]) -> Result<ImageInfo, MultiErr> {
+    let reader = image::io::Reader::new(std::io::Cursor::new(&input))
+        .with_guessed_format()
+        .expect("Cursor io never fails");
+
+    let mut format: String = format!("{:?}", reader.format().unwrap());
+    format.make_ascii_lowercase();
+    let (width, height) = reader.into_dimensions()?;
+
+    Ok(ImageInfo{format, width, height})
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
