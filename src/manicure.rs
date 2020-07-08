@@ -284,7 +284,6 @@ export function image_info(input: Uint8Array): ImageInfo;
 #[wasm_bindgen(skip_typescript)]
 pub fn image_info(input: &[u8]) -> Result<JsValue, JsValue> {
     Ok(JsValue::from_serde(&_image_info(&input)?).unwrap())
-    // Ok(_image_info(&input)?)
 }
 
 pub fn _image_info(input: &[u8]) -> Result<ImageInfo, MultiErr> {
