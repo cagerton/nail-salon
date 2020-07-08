@@ -270,7 +270,6 @@ pub struct ImageInfo {
     height: u32,
 }
 
-
 #[wasm_bindgen(typescript_custom_section)]
 const TS_APPEND_CONTENT: &'static str = r#"
 export interface ImageInfo {
@@ -281,7 +280,6 @@ export interface ImageInfo {
 
 export function image_info(input: Uint8Array): ImageInfo;
 "#;
-
 
 #[wasm_bindgen(skip_typescript)]
 pub fn image_info(input: &[u8]) -> Result<JsValue, JsValue> {
@@ -298,7 +296,11 @@ pub fn _image_info(input: &[u8]) -> Result<ImageInfo, MultiErr> {
     format.make_ascii_lowercase();
     let (width, height) = reader.into_dimensions()?;
 
-    Ok(ImageInfo{format, width, height})
+    Ok(ImageInfo {
+        format,
+        width,
+        height,
+    })
 }
 
 #[cfg(test)]
