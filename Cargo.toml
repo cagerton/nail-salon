@@ -1,9 +1,13 @@
 [package]
 name = "nail-salon"
-description = "Safest place to get your nails done these days"
+description = "Safest place to get your nails done"
 version = "0.1.7"
 authors = ["Chris Agerton <cagerton@gmail.com>"]
 edition = "2018"
+license = "Apache-2.0"
+license-file = "LICENSE-APACHE"
+repository = "https://github.com/cagerton/nail-salon"
+homepage = "https://github.com/cagerton/nail-salon"
 
 [dependencies]
 bytes = "0.5"
