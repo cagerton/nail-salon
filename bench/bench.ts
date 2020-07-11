@@ -4,14 +4,12 @@ import {performance} from 'perf_hooks';
 
 
 function main() {
-    // https://lclabspublicdata.s3.us-east-2.amazonaws.com/lcwa_gov_image_data.zip
-    // https://lclabspublicdata.s3.us-east-2.amazonaws.com/lcwa_gov_image_README.txt
     const in_dir = `${__dirname}/lcwa_gov_image_data/data`;
     const out_dir = `${__dirname}/out`;
     const bad_dir = `${__dirname}/bad`;
 
     if (!fs.existsSync(in_dir)) {
-        console.error('Download and unpack lcwa_gov_image_data.zip and try again');
+        console.error('Run setup_bench_data.ts and try again');
         process.exit(1);
     }
 

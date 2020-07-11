@@ -26,6 +26,14 @@ fs.writeFileSync('example.thumb.jpg', scale_and_orient(orig, 256, 256, cover, do
 wasm-pack build --release --target nodejs
 ```
 
+## Testing
+I've included a test script that uses 1000 sample images collected by the Library of Congress. ([corpus details](https://lclabspublicdata.s3.us-east-2.amazonaws.com/lcwa_gov_image_README.txt))
+```shell
+npm i
+./setup_bench_data.sh
+node -r ts-node/register bench/bench.ts
+```
+
 ## License
 This software is distributed under the Apache License (Version 2.0)
 
