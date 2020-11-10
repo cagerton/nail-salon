@@ -1,9 +1,10 @@
 import * as fs from 'fs';
-import * as nail_salon from '../pkg/nail_salon';
+import * as nail_salon from '../build';
 import {performance} from 'perf_hooks';
+import {OutputFormat, ResizeOp, ScaleFilter} from "../lib/types";
 
 
-function main() {
+async function main() {
     const in_dir = `${__dirname}/lcwa_gov_image_data/data`;
     const out_dir = `${__dirname}/out`;
     const bad_dir = `${__dirname}/bad`;
@@ -35,13 +36,29 @@ function main() {
 
         let tStart = performance.now();
         try {
-            const thumb = nail_salon.scale_and_orient(raw, 128, 128, true, true);
-            nail_salon.image_info(thumb);
+            // const res = nail_salon.convert({
+            //
+            const res = await nail_salon.convert({
+              input: raw,
+              target_h: 512,
+              target_w: 512,
+              down_only: true,
+              scale_filter: ScaleFilter.CatmullRom,
+              jpeg_scaling: true,
+              jpeg_quality: 80,
+              resize_op: ResizeOp.Cover,
+              output_format: OutputFormat.Auto,
+            });
+            // const thumb = nail_salon.scale_and_orient(raw, 512, 512, true, true);
+            // let info = nail_salon.image_info(thumb);
+            // const {output, ...info} = res;
+            // console.log(info);
+
             const timing = performance.now() - tStart;
             stats.timing += timing;
             console.log(` + ${file} -- ${(timing).toFixed(3)}ms`);
             stats.successes++;
-            fs.writeFileSync(outPath, thumb);
+            fs.writeFileSync(outPath, res.output);
 
         } catch (e) {
             const timing = performance.now() - tStart;

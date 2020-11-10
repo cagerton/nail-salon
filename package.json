@@ -13,8 +13,13 @@
   "main": "nail_salon.js",
   "types": "nail_salon.d.ts",
   "devDependencies": {
-    "@types/node": "^12",
-    "ts-node": "^8.10",
-    "typescript": "^3.9"
+    "@types/node": "^12.19.4",
+    "ndb": "^1.1.5",
+    "ts-node": "^9.0.0",
+    "typescript": "^4.0.5"
+  },
+  "dependencies": {
+    "source-map-support": "^0.5.19",
+    "tslib": "^2.0.3"
   }
 }
