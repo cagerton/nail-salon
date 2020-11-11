@@ -34,15 +34,14 @@ export class ImageWorkerPool extends EventEmitter {
   }
 
   async convert(req: ResizeRequest, transferBuffer?: boolean): Promise<ResizeResult> {
-    // if (transferBuffer && process.version
     return new Promise((resolve, reject) => {
       this.workQueue.push({taskId: this.taskCounter++, resolve, reject, req, transferBuffer});
+      this.emit('task-added');
     });
   }
 
   protected async runPool() {
-    for (let idx = 0; idx < this.workerCount; idx++)
-      assert(this.runWorker());
+    let workersStarted = 0;
 
     for await (const [name] of followEvents(this,'worker-died', 'worker-free', 'task-added')) {
       switch (name) {
@@ -52,6 +51,11 @@ export class ImageWorkerPool extends EventEmitter {
 
         case 'worker-free':
         case 'task-added':
+          // lazy start workers
+          if (!this.available.length && workersStarted < this.workerCount) {
+            workersStarted++;
+            assert(this.runWorker());
+          }
 
           while (this.available.length && this.workQueue.length) {
             const worker = this.available.pop()!;

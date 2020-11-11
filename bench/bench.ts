@@ -1,11 +1,7 @@
 import * as fs from 'fs';
 import {performance} from 'perf_hooks';
-
-// import * as nail_salon from '../build';
-// import {SimpleImageWorker} from "../build/worker_basic";
-import {defaultOptions} from "../build/types";
-import {ImageWorkerPool} from "../build/worker_pool";
 import {EventEmitter, once} from "events";
+import {defaultOptions, ImageWorkerPool} from "../dist/lib";
 
 
 function* genFiles(...dirs: string[]) {
@@ -29,7 +25,6 @@ async function main() {
 
   const threads = 8;
   const worker = new ImageWorkerPool(threads, 2000);
-  // const worker = new SimpleImageWorker();
 
   fs.mkdirSync(out_dir, {recursive: true})
   fs.mkdirSync(bad_dir, {recursive: true})
