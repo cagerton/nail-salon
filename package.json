@@ -14,10 +14,11 @@
   "exports": {
     ".": "./dist/lib/index.js",
     "./lib/image_worker_pool": "./dist/lib/image_worker_pool.js",
-    "./lib/types": "./dist/lib/types.js"
+    "./lib/types": "./dist/lib/types.js",
+    "./package.json": "./package.json"
   },
   "types": "./dist/lib/index.d.ts",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "devDependencies": {
     "@types/node": "^12.19.4",
     "ndb": "^1.1.5",

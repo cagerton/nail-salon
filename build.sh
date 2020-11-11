@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 set -eux
 
-export PATH=$PATH:$HOME/.cargo/bin
-
 [ -d "dist" ] && rm -r dist
 
 cargo build --release --target wasm32-unknown-unknown
