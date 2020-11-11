@@ -17,7 +17,7 @@
     "./lib/types": "./dist/lib/types.js"
   },
   "types": "./dist/lib/index.d.ts",
-  "version": "0.1.7",
+  "version": "0.2.0",
   "devDependencies": {
     "@types/node": "^12.19.4",
     "ndb": "^1.1.5",
