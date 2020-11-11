@@ -3,7 +3,6 @@ set -eux
 
 export PATH=$PATH:$HOME/.cargo/bin
 
-[ -d "wasm" ] && rm -r wasm
 [ -d "dist" ] && rm -r dist
 
 cargo build --release --target wasm32-unknown-unknown
