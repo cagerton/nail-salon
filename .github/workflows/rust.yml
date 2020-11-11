@@ -18,6 +18,8 @@ jobs:
       run: cargo install wasm-bindgen-cli
     - name: Rust tests
       run: cargo test
+    - name: install node modules
+      run: npm ci
     - name: Build package
       run: ./build.sh
 
