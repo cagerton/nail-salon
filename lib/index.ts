@@ -1,10 +1,12 @@
-import {convert, image_info} from './wasm/nail_salon';
+import {convert} from '../wasm/nail_salon';
 import {OutputFormat, ResizeOp, ScaleFilter} from './types';
 
-export {convert, image_info};
+export * from './types';
+export {ImageWorkerPool} from './image_worker_pool';
+export {convert, image_info} from "../wasm/nail_salon";
 
 /**
- * @deprecated
+ * @deprecated use convert instead
  */
 export function scale_and_orient(
   input: Uint8Array,

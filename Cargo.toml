@@ -21,8 +21,7 @@ kamadak-exif = "^0.5"
 [dependencies.image]
 version = "^0.23"
 default-features = false
-#features = ["gif", "jpeg", "ico", "png", "tiff", "webp", "bmp"]
-features = ["gif", "jpeg", "png", "tiff", "webp"]
+features = ["gif", "jpeg", "ico", "png", "tiff", "webp", "bmp"]
 
 [profile.release]
 lto = true
@@ -32,6 +31,3 @@ codegen-units = 1
 [lib]
 path = "src/lib.rs"
 crate-type = ["cdylib", "rlib"]
-
-#[package.metadata.wasm-pack.profile.release]
-#wasm-opt = false

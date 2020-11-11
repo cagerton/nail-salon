@@ -54,6 +54,16 @@ export interface WorkerResult {
   err?: Error,
 }
 
+export const defaultOptions = Object.freeze({
+    scale_filter: ScaleFilter.CatmullRom,
+    jpeg_scaling: true,
+    down_only: true,
+    jpeg_quality: 80,
+    resize_op: ResizeOp.Fit,
+    output_format: OutputFormat.Auto,
+  }
+);
+
 /**
  * Digest some common error messages.
  * @param msg
@@ -61,21 +71,23 @@ export interface WorkerResult {
 export function simplifyError(msg: string) {
   if (msg.match(/ImageError.*UnsupportedError/)) {
     if (msg.match(/kind: Format\(Unknown\)/))
-      return 'unknown image format';
+      return 'Unsupported image format';
 
     if (msg.match(/kind: Color/))
-      return 'unsupported color type';
+      return 'Unsupported pixel color type';
 
     if (msg.match(/Format\(Exact\(/))
-      return 'unsupported image format';
+      return 'Unsupported image format';
 
     if (msg.match(/kind: GenericFeature/))
-      return 'unsupported image feature';
+      return 'Unsupported image feature';
   }
 
-  if (msg.match(/ImageError.*DecodingError/))
-    return 'error decoding image';
+  if (msg.match(/ImageError.*DecodingError/) ||
+      msg.match(/ParameterError/) ||
+      msg.match(/InvalidInput/))
+    return 'Failed to decode image';
 
   if (msg.match(/ImageError.*kind: UnexpectedEof/))
-    return 'image file incomplete';
+    return 'Unexpected end of file';
 }

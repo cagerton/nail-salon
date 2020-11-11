@@ -5,13 +5,19 @@
   ],
   "description": "The safest place to get your nails done",
   "files": [
-    "nail_salon_bg.wasm",
-    "nail_salon.js",
-    "nail_salon_bg.js",
-    "nail_salon.d.ts"
+    "dist",
+    "wasm_dist",
+    "lib",
+    "./tsconfig.json",
+    "./README.md"
   ],
-  "main": "nail_salon.js",
-  "types": "nail_salon.d.ts",
+  "exports": {
+    ".": "./dist/lib/index.js",
+    "./lib/image_worker_pool": "./dist/lib/image_worker_pool.js",
+    "./lib/types": "./dist/lib/types.js"
+  },
+  "types": "./dist/lib/index.d.ts",
+  "version": "0.1.7",
   "devDependencies": {
     "@types/node": "^12.19.4",
     "ndb": "^1.1.5",

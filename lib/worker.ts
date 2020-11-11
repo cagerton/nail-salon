@@ -10,7 +10,7 @@ function isRequest(value: unknown): value is WorkerRequest {
 async function workerMain() {
   assert(parentPort && !isMainThread);
   const tasks = eachEvent(parentPort, 'message');
-  const {convert} = await import('./wasm/nail_salon');
+  const {convert} = await import('../wasm/nail_salon');
 
   for await (const [task] of tasks) {
     assert(isRequest(task));

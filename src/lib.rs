@@ -16,7 +16,7 @@ use errors::MultiErr;
 // TODO: Generate TS definitions
 #[wasm_bindgen(typescript_custom_section)]
 const TS_APPEND_CONTENT: &'static str = r#"
-import {ResizeRequest, ImageInfo, ResizeResult} from '../types';
+import {ResizeRequest, ImageInfo, ResizeResult} from '../lib/types';
 export function convert(req: ResizeRequest): ResizeResult;
 export function image_info(input: Uint8Array): ImageInfo;
 "#;
@@ -270,26 +270,19 @@ pub fn scale_dimensions(
 
     // default (shrink to fit) mode prefers to scale by the smaller ratio,
     // whereas cover mode scales by the larger ratio
-    let ratio = if cover ^ (h_ratio > w_ratio) {
-        w_ratio
+    let ratio = if cover {
+        h_ratio.max(w_ratio)
     } else {
-        h_ratio
+        h_ratio.min(w_ratio)
     };
 
     if down_only && ratio > 1.0 {
         return (orig_w, orig_h);
     }
 
-    let scaled_w = (orig_w as f64 * ratio).round() as u32;
-    let scaled_h = (orig_h as f64 * ratio).round() as u32;
-
     // keep at least one pixel
-    if scaled_w == 0 {
-        return ((orig_w as f64 / orig_h as f64).round() as u32, 1);
-    }
-    if scaled_h == 0 {
-        return (1, (orig_h as f64 / orig_w as f64).round() as u32);
-    }
+    let scaled_w = (orig_w as f64 * ratio).round().max(1.0) as u32;
+    let scaled_h = (orig_h as f64 * ratio).round().max(1.0) as u32;
 
     (scaled_w, scaled_h)
 }
@@ -330,5 +323,7 @@ mod tests {
         // narrow fit, up
         assert_eq!(scale_dimensions(8, 16, 32, 32, false, false), (16, 32));
         assert_eq!(scale_dimensions(16, 8, 32, 32, false, false), (32, 16));
+        assert_eq!(scale_dimensions(1, 512, 32, 32, false, false), (1, 32));
+        assert_eq!(scale_dimensions(512, 1, 32, 32, false, false), (32, 1));
     }
 }

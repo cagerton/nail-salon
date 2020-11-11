@@ -9,6 +9,7 @@ type Timeout = ReturnType<typeof setTimeout>;
 
 
 interface Task extends WorkerRequest {
+  transferBuffer?: boolean;
   resolve: (resp: ResizeResult) => void;
   reject: (err: Error) => void;
 }
@@ -32,9 +33,10 @@ export class ImageWorkerPool extends EventEmitter {
     assert(this.runPool());
   }
 
-  async convert(req: ResizeRequest): Promise<ResizeResult> {
+  async convert(req: ResizeRequest, transferBuffer?: boolean): Promise<ResizeResult> {
+    // if (transferBuffer && process.version
     return new Promise((resolve, reject) => {
-      this.workQueue.push({taskId: this.taskCounter++, resolve, reject, req});
+      this.workQueue.push({taskId: this.taskCounter++, resolve, reject, req, transferBuffer});
     });
   }
 
@@ -50,19 +52,21 @@ export class ImageWorkerPool extends EventEmitter {
 
         case 'worker-free':
         case 'task-added':
+
           while (this.available.length && this.workQueue.length) {
             const worker = this.available.pop()!;
             const task = this.workQueue.shift()!;
             const {taskId, req} = task;
 
             this.taskMap.set(worker, task);
-            this.timers.set(worker, setTimeout(() => {
-              task.reject(new Error(`Task took too long`));
-              this.taskMap.delete(worker);
-              worker.terminate();
-            }, this.timeLimit));
+            if (Number.isFinite(this.timeLimit))
+              this.timers.set(worker, setTimeout(() => {
+                task.reject(new Error(`Task took too long`));
+                this.taskMap.delete(worker);
+                worker.terminate();
+              }, this.timeLimit));
 
-            worker.postMessage({taskId, req});
+            worker.postMessage({taskId, req}, task.transferBuffer ? [req.input] : []);
           }
           break;
 
