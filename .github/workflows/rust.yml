@@ -18,3 +18,4 @@ jobs:
       run: cargo test
     - name: Build package
       run: ./build.sh
+
