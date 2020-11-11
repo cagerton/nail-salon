@@ -14,6 +14,8 @@ jobs:
       run: rustup target add wasm32-unknown-unknown
     - name: Install wasm related tools
       run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+    - name: wasm-bindgen-cli
+      run: cargo install wasm-bindgen-cli
     - name: Rust tests
       run: cargo test
     - name: Build package
