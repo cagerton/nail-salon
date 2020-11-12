@@ -4,7 +4,7 @@ NailSalon's objective is to provide a safe and performant library for the server
 
 ## Background
 
-Generating thumbnails is dangerous in general, and for a NodeJS developer, its especially so.
+Generating thumbnails is dangerous in general, and for a NodeJS developer, especially so.
 Security vulnerabilities are extremely common in core image libraries such as [libpng](https://cve.mitre.org/cgi-bin/cvekey.cgi?keyword=libpng), [libjpeg](https://cve.mitre.org/cgi-bin/cvekey.cgi?keyword=libjpeg), or [libexif](https://cve.mitre.org/cgi-bin/cvekey.cgi?keyword=libexif).
 These percolate up to image processing libraries and utilities such as [ImageMagick](https://cve.mitre.org/cgi-bin/cvekey.cgi?keyword=imagemagick), [GraphicsMagick](https://cve.mitre.org/cgi-bin/cvekey.cgi?keyword=graphicsmagick), [libvips](https://cve.mitre.org/cgi-bin/cvekey.cgi?keyword=libvips).
 When it comes time to handle images in a NodeJS application, your main options are to use libraries that wrap the command line tools or native modules which use the error-prone libraries.
