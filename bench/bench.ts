@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import {performance} from 'perf_hooks';
 import {EventEmitter, once} from "events";
 import {defaultOptions, ImageWorkerPool} from "../dist/lib";
-
+import {ResizeOp} from "../dist/lib";
 
 function* genFiles(...dirs: string[]) {
   for (const dir of dirs) {
@@ -59,6 +59,7 @@ async function main() {
           input: raw,  // TODO: Investigate extra failures when using raw.buffer vs buffer
           target_h: 512,
           target_w: 512,
+          resize_op: ResizeOp.Fit
         };
         imgStart = performance.now();
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -e
+set -eu
 
 export BENCH_DIR=./bench
 export DATA_DIR="${BENCH_DIR}/lcwa_gov_image_data"
@@ -11,15 +11,16 @@ if [ ! -d "${DATA_DIR}" ]; then
   mkdir -p "${DATA_DIR}"
 fi
 
-if [ ! -d "${DATA_DIR/data}" ]; then
-
+if [ ! -d "${DATA_DIR}/data" ]; then
   if [ ! -f "${ZIPFILE}" ]; then
+    echo "Downloading ${ZIPURL}"
     curl -o "${ZIPFILE}" "${ZIPURL}"
   fi
 
   if [ ! -d "${DATA_DIR}/data" ]; then
+    echo "Extracting ${ZIPFILE}"
     unzip -d "${DATA_DIR}" "${ZIPFILE}"
   fi
 fi
 
-
+echo "Setup complete."
