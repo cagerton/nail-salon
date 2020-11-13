@@ -4,24 +4,7 @@ NailSalon's objective is to provide a safe and performant library for the server
 
 ## Background
 
-Generating thumbnails is dangerous in general, and for a NodeJS developer, especially so.
-Security vulnerabilities are extremely common in core image libraries such as [libpng](https://cve.mitre.org/cgi-bin/cvekey.cgi?keyword=libpng), [libjpeg](https://cve.mitre.org/cgi-bin/cvekey.cgi?keyword=libjpeg), or [libexif](https://cve.mitre.org/cgi-bin/cvekey.cgi?keyword=libexif).
-These percolate up to image processing libraries and utilities such as [ImageMagick](https://cve.mitre.org/cgi-bin/cvekey.cgi?keyword=imagemagick), [GraphicsMagick](https://cve.mitre.org/cgi-bin/cvekey.cgi?keyword=graphicsmagick), [libvips](https://cve.mitre.org/cgi-bin/cvekey.cgi?keyword=libvips).
-When it comes time to handle images in a NodeJS application, your main options are to use libraries that wrap the command line tools or native modules which use the error-prone libraries.
-Command line wrappers introduce fun opportunities for [command injection](https://snyk.io/vuln/npm:gm) attacks and native modules carry all kinds of baggage around buid steps vs prebuilds. Even supposing you manage to keep on top of known vulnerabilities, it's probably a good idea to think about various forms of isolation and sandboxing to mitigate unknown ones as well. This gets complex quickly and tends to be quite platform specific.
-
-NailSalon avoids most common image processing vulnerabilities by using libraries that were written in a memory safe language and applies robust, platform agnostic sandboxing by running in a WebAssembly VM with limited surface area.
-
-## Changes
-
-### 0.2.3
-* Fix scale_dimensions for extremely narrow images
-* Add support for cropping, quality controls, and additional interface options through `convert(...)`
-* Deprecate `scale_and_orient`, which is now implemented using `convert(...)`
-* Switch to using `serde_wasm_bindgen` and manual TypeScript types + helpers
-* Add additional build steps using `build.sh` to support the extra TypeScript
-* Introduce the `ImageWorkerPool` which supports concurrent workers and execution limits
-* Limit jpeg scaling to 2x the image size to improve resize quality, set Lanczos3 as the default filter
+Safe thumbnail generation for NodeJS applications is hard. Most NPM modules for image processing use native image processing libraries or wrap command line utilities which have a long history of security vulnerabilities. Some JavaScript only libraries are available, but tend to be painfully slow. NailSalon avoids these problems using libraries which are written in a memory safe language and running them in a WebAssembly VM.
 
 ## Typical usage
 ```typescript
@@ -63,6 +46,16 @@ npm i
 ./setup_bench_data.sh
 node -r ts-node/register bench/bench.ts
 ```
+
+## Changes
+### 0.2.3
+* Fix scale_dimensions for extremely narrow images
+* Add support for cropping, quality controls, and additional interface options through `convert(...)`
+* Deprecate `scale_and_orient`, which is now implemented using `convert(...)`
+* Switch to using `serde_wasm_bindgen` and manual TypeScript types + helpers
+* Add additional build steps using `build.sh` to support the extra TypeScript
+* Introduce the `ImageWorkerPool` which supports concurrent workers and execution limits
+* Limit jpeg scaling to 2x the image size to improve resize quality, set Lanczos3 as the default filter
 
 ## License
 Apache License (Version 2.0)
