@@ -1,39 +1,64 @@
 # NailSalon
 
-NailSalon is a security-minded image thumbnailing module for NodeJS. It's based primarily on Rust's [image](https://crates.io/crates/image) crate and compiled to WebAssembly.
+NailSalon's objective is to provide a safe and performant library for the server-side generation of thumbnails for common image files in NodeJS.
 
-## Features
- * Immune to many classes of security vulnerabilities which commonly affect image processing libraries by nature of being written in a memory safe language and run in a WebAssembly sandbox with minimal surface area.
- * Preserves format for PNGs and JPEGs for all other supported types.
- * Automatically normalizes JPEG orientation using exif data.
- * Supports fast IDCT downscaling of JPEGs to improve performance.
- * TypeScript type definitions included.
+## Background
+
+Safe thumbnail generation for NodeJS applications is hard. Most NPM modules for image processing use native image processing libraries or wrap command line utilities which have a long history of security vulnerabilities. Some JavaScript only libraries are available, but tend to be painfully slow. NailSalon avoids these problems using libraries which are written in a memory safe language and running them in a WebAssembly VM.
 
 ## Typical usage
-```TypeScript
+```typescript
 import fs from 'fs';
-import {scale_and_orient} from 'nail_salon';
+import {ImageWorkerPool, defaultOptions} from 'nail-salon';
+import path from 'path';
 
-const cover = true;
-const downscale_only = true;
+// Move work off of the main thread and impose time limits using an ImageWorkerPool
+const pool = new ImageWorkerPool(2);
 
-const orig = fs.readFileSync('example.jpg');
-fs.writeFileSync('example.thumb.jpg', scale_and_orient(orig, 256, 256, cover, downscale_only));
+async function handleImage(original: string) {
+  const {output, ...details} = await pool.convert({
+    ...defaultOptions,
+    input: fs.readFileSync(original),
+    target_h: 256,
+    target_w: 256,
+  });
+  const {dir, name} = path.parse(original);
+  const destination = `${dir}/${name}_thumb.${details.format.toLocaleLowerCase()}`;
+  console.dir({original, destination, ...details, outputSize: output.byteLength});
+  fs.writeFileSync(destination, output);
+}
+
+Promise.all(['./example1.jpg', './example2.png', './example3.gif'].map(handleImage))
+  .then(() => process.exit(0), err => {
+    console.error(err);
+    process.exit(1);
+  });
 ```
 
 ## Building
-```shell
-wasm-pack build --release --target nodejs
-```
+See build.sh or GitHub action for details.
 
 ## Testing
-I've included a test script that uses 1000 sample images collected by the Library of Congress. ([corpus details](https://lclabspublicdata.s3.us-east-2.amazonaws.com/lcwa_gov_image_README.txt))
+I've included a benchmarking script uses 1000 sample images collected by the Library of Congress. ([corpus details](https://lclabspublicdata.s3.us-east-2.amazonaws.com/lcwa_gov_image_README.txt))
+
 ```shell
 npm i
 ./setup_bench_data.sh
 node -r ts-node/register bench/bench.ts
 ```
 
-## License
-This software is distributed under the Apache License (Version 2.0)
+## Changes
+### 0.2.3
+* Fix scale_dimensions for extremely narrow images
+* Add support for cropping, quality controls, and additional interface options through `convert(...)`
+* Deprecate `scale_and_orient`, which is now implemented using `convert(...)`
+* Switch to using `serde_wasm_bindgen` and manual TypeScript types + helpers
+* Add additional build steps using `build.sh` to support the extra TypeScript
+* Introduce the `ImageWorkerPool` which supports concurrent workers and execution limits
+* Limit jpeg scaling to 2x the image size to improve resize quality, set Lanczos3 as the default filter
 
+## License
+Apache License (Version 2.0)
+
+## Links
+ * This was partially inspired by [Squoosh](https://squoosh.app/), which leverages WebAssembly to power an image codec testing web application.

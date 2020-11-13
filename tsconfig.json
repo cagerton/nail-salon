@@ -1,0 +1,35 @@
+{
+  "compilerOptions": {
+    "allowSyntheticDefaultImports": true,
+    "alwaysStrict": true,
+    "esModuleInterop": true,
+    "importHelpers": true,
+    "forceConsistentCasingInFileNames": true,
+    "lib": [
+      "webworker",
+      "es2019"
+    ],
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "noEmit": true,
+    "noEmitHelpers": true,
+    "noErrorTruncation": false,
+    "noUnusedLocals": true,
+    "pretty": true,
+    "skipLibCheck": false,
+    "strict": true,
+    "target": "es2019",
+    "typeRoots": [
+      "./node_modules/@types"
+    ],
+    "rootDir": ".",
+    "composite": true
+  },
+  "exclude": [
+    "node_modules"
+  ],
+  "include": ["lib"],
+  "references": [
+    { "path": "./tsconfig.wasm.json", "prepend": true }
+  ]
+}

@@ -1,21 +1,24 @@
 name: Rust
-
-on:
-  push:
-    branches: [ master ]
-  pull_request:
-    branches: [ master ]
+on: [push, pull_request]
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v2
-    - name: Install
+    - uses: actions/setup-node@v1
+      with:
+        node-version: '14'
+    - name: Install wasm target
+      run: rustup target add wasm32-unknown-unknown
+    - name: Install wasm related tools
       run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+    - name: wasm-bindgen-cli
+      run: cargo install wasm-bindgen-cli
     - name: Rust tests
       run: cargo test
-    - name: Wasm Pack
-      run: wasm-pack build  --target nodejs
+    - name: install node modules
+      run: npm ci
+    - name: Build package
+      run: ./build.sh
+

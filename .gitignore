@@ -4,3 +4,4 @@ pkg
 bench/bad
 bench/out
 bench/lcwa_gov_image_data*
+dist

@@ -1,0 +1,19 @@
+{
+  "name": "surrogate",
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "module": "commonjs",
+    "sourceMap": true,
+    "declaration": true,
+    "declarationDir": "./dist/wasm",
+    "declarationMap": true,
+    "inlineSources": true,
+    "noEmit": false,
+    "outDir": "dist"
+  },
+  "exclude": "*",
+  "include": ["dist/wasm"],
+  "references": [{
+    "path": "tsconfig.json"
+  }]
+}
