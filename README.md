@@ -14,13 +14,14 @@ NailSalon avoids most common image processing vulnerabilities by using libraries
 
 ## Changes
 
-### 0.2.(tbd)
-* Fixes scale_dimensions for extremely narrow images
+### 0.2.3
+* Fix scale_dimensions for extremely narrow images
 * Add support for cropping, quality controls, and additional interface options through `convert(...)`
 * Deprecate `scale_and_orient`, which is now implemented using `convert(...)`
 * Switch to using `serde_wasm_bindgen` and manual TypeScript types + helpers
-* Adds additional build steps using `build.sh` to support the extra TypeScript
-* Introduces the `ImageWorkerPool` which supports concurrent workers and execution limits
+* Add additional build steps using `build.sh` to support the extra TypeScript
+* Introduce the `ImageWorkerPool` which supports concurrent workers and execution limits
+* Limit jpeg scaling to 2x the image size to improve resize quality, set Lanczos3 as the default filter
 
 ## Typical usage
 ```typescript
@@ -65,3 +66,6 @@ node -r ts-node/register bench/bench.ts
 
 ## License
 Apache License (Version 2.0)
+
+## Links
+ * This was partially inspired by [Squoosh](https://squoosh.app/), which leverages WebAssembly to power an image codec testing web application.

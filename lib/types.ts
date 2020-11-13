@@ -55,7 +55,7 @@ export interface WorkerResult {
 }
 
 export const defaultOptions = Object.freeze({
-    scale_filter: ScaleFilter.CatmullRom,
+    scale_filter: ScaleFilter.Lanczos3,
     jpeg_scaling: true,
     down_only: true,
     jpeg_quality: 80,

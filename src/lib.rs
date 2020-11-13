@@ -124,17 +124,16 @@ fn _convert(request: ResizeRequest) -> Result<ResizeResult, MultiErr> {
     let img = if in_fmt == image::ImageFormat::Jpeg && request.jpeg_scaling {
         let mut decoder = JpegDecoder::new(Cursor::new(&request.input))?;
 
-        // Setup DCT scaling
+        // Setup DCT scaling. Use a larger size than needed since we still need to resize.
         let (w, h) = decoder.dimensions();
         let (req_w, req_h) = scale_dimensions(
             w,
             h,
-            downscale_w as u32,
-            downscale_h as u32,
+            downscale_w as u32 * 2,
+            downscale_h as u32 * 2,
             cover,
-            request.down_only,
+            true,
         );
-
         decoder.scale(u16::try_from(req_w)?, u16::try_from(req_h).unwrap())?;
 
         DynamicImage::from_decoder(decoder)?
