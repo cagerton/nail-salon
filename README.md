@@ -4,7 +4,7 @@ NailSalon's objective is to provide a safe and performant library for the server
 
 ## Background
 
-Safe thumbnail generation for NodeJS applications is hard. Most NPM modules for image processing use native image processing libraries or wrap command line utilities which have a long history of security vulnerabilities. Some JavaScript only libraries are available, but tend to be painfully slow. NailSalon avoids these problems using libraries which are written in a memory safe language and running them in a WebAssembly VM.
+Safe thumbnail generation for NodeJS applications is hard. Most relevant NPM modules use native image processing libraries or wrap command line utilities which have a long history of security vulnerabilities. Some JavaScript-only libraries are available, but they tend to be very slow. NailSalon avoids these problems using libraries which are written in a memory safe language and running them in a WebAssembly VM.
 
 ## Typical usage
 ```typescript
@@ -48,6 +48,9 @@ node -r ts-node/register bench/bench.ts
 ```
 
 ## Changes
+### 0.2.4
+* Defer Wasm compilation until necessary
+
 ### 0.2.3
 * Fix scale_dimensions for extremely narrow images
 * Add support for cropping, quality controls, and additional interface options through `convert(...)`

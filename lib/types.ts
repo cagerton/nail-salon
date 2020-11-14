@@ -7,14 +7,29 @@ export enum ScaleFilter {
 }
 
 export enum ResizeOp {
+  /**
+   * Scale the input to fit within the target dimensions.
+   */
   Fit = 'Fit',
+
+  /**
+   * Scale an input to cover the target dimensions.
+   */
   Cover = 'Cover',
+
+  /**
+   * Scale the input to cover the target dimensions and trim the excess.  Keeps the central area.
+   */
   Crop = 'Crop',
 }
 
 export enum OutputFormat {
   JPEG = 'JPEG',
   PNG = 'PNG',
+
+  /**
+   * Uses the PNG encoder if the input was a PNG. Otherwise uses a JPEG encoder.
+   */
   Auto = 'Auto',
 }
 
@@ -43,6 +58,16 @@ export interface ImageInfo {
   height: number;
 }
 
+export const defaultOptions = Object.freeze({
+    scale_filter: ScaleFilter.Lanczos3,
+    jpeg_scaling: true,
+    down_only: true,
+    jpeg_quality: 80,
+    resize_op: ResizeOp.Fit,
+    output_format: OutputFormat.Auto,
+  }
+);
+
 export interface WorkerRequest {
   taskId: number;
   req: ResizeRequest;
@@ -54,21 +79,11 @@ export interface WorkerResult {
   err?: Error,
 }
 
-export const defaultOptions = Object.freeze({
-    scale_filter: ScaleFilter.Lanczos3,
-    jpeg_scaling: true,
-    down_only: true,
-    jpeg_quality: 80,
-    resize_op: ResizeOp.Fit,
-    output_format: OutputFormat.Auto,
-  }
-);
-
 /**
- * Digest some common error messages.
+ * Summarize some common error message strings.
  * @param msg
  */
-export function simplifyError(msg: string) {
+export function simplifyError(msg: string): string | undefined {
   if (msg.match(/ImageError.*UnsupportedError/)) {
     if (msg.match(/kind: Format\(Unknown\)/))
       return 'Unsupported image format';

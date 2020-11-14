@@ -17,8 +17,23 @@ use errors::MultiErr;
 #[wasm_bindgen(typescript_custom_section)]
 const TS_APPEND_CONTENT: &'static str = r#"
 import {ResizeRequest, ImageInfo, ResizeResult} from '../lib/types';
+
+/**
+ * Resize an image
+ */
 export function convert(req: ResizeRequest): ResizeResult;
+
+/**
+ * Return image format and dimensions
+ */
 export function image_info(input: Uint8Array): ImageInfo;
+
+// Expose type exports for deferred loading
+interface ExposedFunctions {
+  convert: typeof convert;
+  image_info: typeof image_info;
+}
+export type {ExposedFunctions};
 "#;
 
 #[derive(Serialize)]

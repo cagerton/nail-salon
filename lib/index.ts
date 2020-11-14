@@ -1,9 +1,26 @@
-import {convert} from '../wasm/nail_salon';
-import {OutputFormat, ResizeOp, ScaleFilter} from './types';
+import {OutputFormat, ResizeOp, ScaleFilter, ResizeRequest, ResizeResult, ImageInfo} from './types';
 
 export * from './types';
 export {ImageWorkerPool} from './image_worker_pool';
-export {convert, image_info} from "../wasm/nail_salon";
+
+import type WasmModule from '../wasm/nail_salon';
+
+// Defer wasm compilation overhead until first use
+let cachedModule: WasmModule.ExposedFunctions;
+
+export function convert(request: ResizeRequest): ResizeResult {
+  if (!cachedModule)
+    cachedModule = require('../wasm/nail_salon');
+
+  return cachedModule.convert(request);
+}
+
+export function image_info(input: Uint8Array): ImageInfo {
+  if (!cachedModule)
+    cachedModule = require('../wasm/nail_salon');
+
+  return cachedModule.image_info(input);
+}
 
 /**
  * @deprecated use convert instead
