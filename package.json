@@ -4,6 +4,7 @@
     "Chris Agerton <cagerton@gmail.com>"
   ],
   "description": "The safest place to get your nails done",
+  "main": "./dist/lib/index",
   "files": [
     "dist",
     "wasm_dist",
@@ -18,7 +19,7 @@
     "./package.json": "./package.json"
   },
   "types": "./dist/lib/index.d.ts",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "devDependencies": {
     "@types/node": "^12.19.4",
     "ndb": "^1.1.5",

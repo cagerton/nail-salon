@@ -48,6 +48,9 @@ node -r ts-node/register bench/bench.ts
 ```
 
 ## Changes
+### 0.2.5
+* Add `main` to `package.json` - thanks
+
 ### 0.2.4
 * Defer Wasm compilation until necessary
 
