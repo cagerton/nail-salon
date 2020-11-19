@@ -17,6 +17,7 @@
     "./lib/types": "./dist/lib/types.js",
     "./package.json": "./package.json"
   },
+  "main": "./dist/lib/index.js",
   "types": "./dist/lib/index.d.ts",
   "version": "0.2.4",
   "devDependencies": {

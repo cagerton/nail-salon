@@ -26,6 +26,7 @@ export enum ResizeOp {
 export enum OutputFormat {
   JPEG = 'JPEG',
   PNG = 'PNG',
+  GIF = 'GIF',
 
   /**
    * Uses the PNG encoder if the input was a PNG. Otherwise uses a JPEG encoder.

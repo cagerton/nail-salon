@@ -1,9 +1,11 @@
 #[macro_use]
 extern crate serde_derive;
 use image::codecs::jpeg::JpegDecoder;
+use image::gif::{GifDecoder, GifEncoder};
 use image::imageops::FilterType;
 use image::{
-    ColorType, DynamicImage, GenericImageView, ImageDecoder, ImageFormat, ImageOutputFormat,
+    AnimationDecoder, ColorType, DynamicImage, Frame, GenericImageView, ImageDecoder, ImageFormat,
+    ImageOutputFormat,
 };
 use std::convert::TryFrom;
 use std::io::Cursor;
@@ -36,6 +38,14 @@ interface ExposedFunctions {
 export type {ExposedFunctions};
 "#;
 
+#[wasm_bindgen]
+extern "C" {
+    // Use `js_namespace` here to bind `console.log(..)` instead of just
+    // `log(..)`
+    #[wasm_bindgen(js_namespace = console)]
+    fn log(s: &str);
+}
+
 #[derive(Serialize)]
 pub struct ImageInfo {
     format: String,
@@ -65,6 +75,7 @@ pub struct ResizeRequest {
 pub enum OutputFormat {
     JPEG,
     PNG,
+    GIF,
     Auto,
 }
 
@@ -118,8 +129,68 @@ fn get_orientation(input: &[u8]) -> Result<u32, exif::Error> {
     }
 }
 
+fn _resize_frame(frame: Frame, target_width: u32, target_height: u32, filter: FilterType) -> Frame {
+    let left = frame.left();
+    let top = frame.top();
+    let delay = frame.delay();
+
+    let img = DynamicImage::ImageRgba8(frame.into_buffer());
+    let resized = img.resize_exact(target_width, target_height, filter);
+
+    Frame::from_parts(resized.to_rgba(), left, top, delay)
+}
+
+fn _convert_gif(request: ResizeRequest) -> Result<ResizeResult, MultiErr> {
+    let decoder = GifDecoder::new(Cursor::new(&request.input))?;
+    let (w, h) = decoder.dimensions();
+    let frames = decoder.into_frames();
+
+    let (resized_w, resized_h) = scale_dimensions(
+        w,
+        h,
+        request.target_w as u32,
+        request.target_h as u32,
+        request.resize_op.cover(),
+        request.down_only,
+    );
+
+    let resized_frames = frames.map(|frame| match frame {
+        Ok(frame) => Ok(_resize_frame(
+            frame,
+            resized_w,
+            resized_h,
+            request.scale_filter,
+        )),
+        _ => frame,
+    });
+
+    let mut out: Vec<u8> = Vec::new();
+    {
+        let mut encoder = GifEncoder::new(&mut out);
+        encoder.try_encode_frames(resized_frames)?;
+    }
+
+    Ok(ResizeResult {
+        format: "GIF".to_string(),
+        output: out,
+        w: u16::try_from(resized_w).unwrap(),
+        h: u16::try_from(resized_h).unwrap(),
+    })
+}
+
 fn _convert(request: ResizeRequest) -> Result<ResizeResult, MultiErr> {
     let in_fmt = image::guess_format(&request.input)?;
+
+    let output_fmt = match request.output_format {
+        OutputFormat::Auto => in_fmt,
+        OutputFormat::JPEG => ImageFormat::Jpeg,
+        OutputFormat::PNG => ImageFormat::Png,
+        OutputFormat::GIF => ImageFormat::Gif,
+    };
+
+    if in_fmt == ImageFormat::Gif && output_fmt == ImageFormat::Gif {
+        return _convert_gif(request);
+    }
 
     let orientation = if in_fmt == ImageFormat::Jpeg {
         get_orientation(&request.input).unwrap_or(0)
@@ -190,20 +261,9 @@ fn _convert(request: ResizeRequest) -> Result<ResizeResult, MultiErr> {
         _ => thumb,
     };
 
-    let output_fmt = match request.output_format {
-        OutputFormat::Auto => {
-            if in_fmt == ImageFormat::Png {
-                in_fmt
-            } else {
-                ImageFormat::Jpeg
-            }
-        }
-        OutputFormat::JPEG => ImageFormat::Jpeg,
-        OutputFormat::PNG => ImageFormat::Png,
-    };
-
     let (fmt_name, output_fmt) = match output_fmt {
         image::ImageFormat::Png => ("PNG", ImageOutputFormat::Png),
+        image::ImageFormat::Gif => ("GIF", ImageOutputFormat::Gif),
         _ => ("JPEG", ImageOutputFormat::Jpeg(request.jpeg_quality)),
     };
 
