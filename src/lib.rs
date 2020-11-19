@@ -129,13 +129,22 @@ fn get_orientation(input: &[u8]) -> Result<u32, exif::Error> {
     }
 }
 
-fn _resize_frame(frame: Frame, target_width: u32, target_height: u32, filter: FilterType) -> Frame {
+fn _resize_frame(
+    frame: Frame,
+    target_width: u32,
+    target_height: u32,
+    fill: bool,
+    filter: FilterType,
+) -> Frame {
     let left = frame.left();
     let top = frame.top();
     let delay = frame.delay();
 
     let img = DynamicImage::ImageRgba8(frame.into_buffer());
-    let resized = img.resize_exact(target_width, target_height, filter);
+    let resized = match fill {
+        true => img.resize_exact(target_width, target_height, filter),
+        false => img.resize_to_fill(target_width, target_height, filter),
+    };
 
     Frame::from_parts(resized.to_rgba(), left, top, delay)
 }
@@ -145,20 +154,24 @@ fn _convert_gif(request: ResizeRequest) -> Result<ResizeResult, MultiErr> {
     let (w, h) = decoder.dimensions();
     let frames = decoder.into_frames();
 
-    let (resized_w, resized_h) = scale_dimensions(
-        w,
-        h,
-        request.target_w as u32,
-        request.target_h as u32,
-        request.resize_op.cover(),
-        request.down_only,
-    );
+    let (resized_w, resized_h) = match request.resize_op {
+        ResizeType::Crop => (request.target_w as u32, request.target_h as u32),
+        _ => scale_dimensions(
+            w,
+            h,
+            request.target_w as u32,
+            request.target_h as u32,
+            request.resize_op.cover(),
+            request.down_only,
+        ),
+    };
 
     let resized_frames = frames.map(|frame| match frame {
         Ok(frame) => Ok(_resize_frame(
             frame,
             resized_w,
             resized_h,
+            request.resize_op == ResizeType::Crop,
             request.scale_filter,
         )),
         _ => frame,
