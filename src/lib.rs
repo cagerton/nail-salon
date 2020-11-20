@@ -90,6 +90,7 @@ pub enum FilterOption {
 }
 
 #[derive(Deserialize)]
+#[derive(PartialEq)]
 pub enum ResizeType {
     Fit,
     Cover,
