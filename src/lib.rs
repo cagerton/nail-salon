@@ -207,20 +207,14 @@ fn _convert(request: ResizeRequest) -> Result<ResizeResult, MultiErr> {
         _ => ("JPEG", ImageOutputFormat::Jpeg(request.jpeg_quality)),
     };
 
-    let thumb = match output_fmt {
-        ImageOutputFormat::Jpeg(_) => match thumb.color() {
-            // The jpeg encoder doesn't support 16 bit depth
-            ColorType::L16 => DynamicImage::ImageLuma8(thumb.into_luma()),
-            ColorType::La16 => DynamicImage::ImageLumaA8(thumb.into_luma_alpha()),
-            ColorType::Rgb16 => DynamicImage::ImageRgb8(thumb.into_rgb()),
-            ColorType::Rgba16 => DynamicImage::ImageRgba8(thumb.into_rgba()),
-            _ => thumb,
-        },
-        ImageOutputFormat::Png => match thumb.color() {
-            // The png encoder doesn't support BGR color types
-            ColorType::Bgr8 => DynamicImage::ImageRgb8(thumb.into_rgb()),
-            _ => thumb,
-        },
+    // Normalize pixel format prior to encoding
+    // 16 bit depth is unsupported for JPEG, buggy with the PNG encoder
+    // BGR is unsupported by the PNG encoder.
+    let thumb = match thumb.color() {
+        ColorType::L16 => DynamicImage::ImageLuma8(thumb.into_luma()),
+        ColorType::La16 => DynamicImage::ImageLumaA8(thumb.into_luma_alpha()),
+        ColorType::Rgb16 | ColorType::Bgr8 => DynamicImage::ImageRgb8(thumb.into_rgb()),
+        ColorType::Rgba16 | ColorType::Bgra8 => DynamicImage::ImageRgba8(thumb.into_rgba()),
         _ => thumb,
     };
 
