@@ -51,6 +51,7 @@ node -r ts-node/register bench/bench.ts
 
 ### 0.2.6
 * Use 8bit pixel depth for thumbnail encoding. Fixes an issue that was reported with 16bit depth PNG images.
+* Bump dependencies
 
 ### 0.2.5
 * Add `main` to `package.json` - thanks

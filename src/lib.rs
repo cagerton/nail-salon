@@ -211,10 +211,10 @@ fn _convert(request: ResizeRequest) -> Result<ResizeResult, MultiErr> {
     // 16 bit depth is unsupported for JPEG, buggy with the PNG encoder
     // BGR is unsupported by the PNG encoder.
     let thumb = match thumb.color() {
-        ColorType::L16 => DynamicImage::ImageLuma8(thumb.into_luma()),
-        ColorType::La16 => DynamicImage::ImageLumaA8(thumb.into_luma_alpha()),
-        ColorType::Rgb16 | ColorType::Bgr8 => DynamicImage::ImageRgb8(thumb.into_rgb()),
-        ColorType::Rgba16 | ColorType::Bgra8 => DynamicImage::ImageRgba8(thumb.into_rgba()),
+        ColorType::L16 => DynamicImage::ImageLuma8(thumb.into_luma8()),
+        ColorType::La16 => DynamicImage::ImageLumaA8(thumb.into_luma_alpha8()),
+        ColorType::Rgb16 | ColorType::Bgr8 => DynamicImage::ImageRgb8(thumb.into_rgb8()),
+        ColorType::Rgba16 | ColorType::Bgra8 => DynamicImage::ImageRgba8(thumb.into_rgba8()),
         _ => thumb,
     };
 

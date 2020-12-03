@@ -1,7 +1,7 @@
 [package]
 name = "nail-salon"
 description = "Safest place to get your nails done"
-version = "0.2.5"
+version = "0.2.6"
 authors = ["Chris Agerton <cagerton@gmail.com>"]
 edition = "2018"
 license = "Apache-2.0"
