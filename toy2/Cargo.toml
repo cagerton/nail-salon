@@ -1,0 +1,18 @@
+[package]
+name = "toy2"
+version = "0.1.0"
+authors = ["Chris Agerton <cagerton@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[dependencies]
+image="0.23"
+png="0.16.7"
+gif = "0.11.1"
+clap = "2"
+#num-integer = "0.1.44"
+num-rational = "0.3.2"
+[profile.release]
+lto = true
+opt-level = 3
+codegen-units = 1
