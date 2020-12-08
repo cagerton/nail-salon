@@ -10,8 +10,10 @@ image="0.23"
 png="0.16.7"
 gif = "0.11.1"
 clap = "2"
-#num-integer = "0.1.44"
+num-integer = "0.1.44"
 num-rational = "0.3.2"
+gif-dispose = "3.0.1"
+
 [profile.release]
 lto = true
 opt-level = 3
