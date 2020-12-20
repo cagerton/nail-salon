@@ -1,7 +1,7 @@
 use clap::{App, Arg};
 use image::codecs::gif::{GifDecoder, GifEncoder};
-use image::codecs::png::{ApngDecoder, PngDecoder, PngEncoder};
-use image::{AnimationDecoder, DynamicImage, GenericImage, GenericImageView, ImageBuffer, ImageDecoder, ImageError, ImageFormat, Rgb, Rgba, Pixel, RgbaImage};
+use image::codecs::png::{PngDecoder, PngEncoder};
+use image::{AnimationDecoder, DynamicImage, ImageDecoder, ImageError, ImageFormat, Rgba, RgbaImage, GenericImageView};
 
 use gif::{DisposalMethod, DecodingError};
 use num_rational::Ratio;
@@ -187,6 +187,8 @@ fn palette_lookup(palette: &[u8], index: usize) -> Option<Rgba<u8>> {
 }
 
 use num_integer::Integer;
+use image::imageops::FilterType;
+
 
 fn gifsimple(path: &Path) -> Result<(), SomeError> {
     let input = File::open(&path)?;
@@ -206,7 +208,7 @@ fn gifsimple(path: &Path) -> Result<(), SomeError> {
             for (y, row) in screen.pixels.rows().enumerate() {
                 for (x, pix) in row.iter().enumerate() {
                     *img.get_pixel_mut(x as u32, y as u32) =
-                        image::Rgba([pix.r, pix.g, pix.b, pix.a.into()]);
+                        Rgba([pix.r, pix.g, pix.b, pix.a.into()]);
                 }
             }
 
@@ -314,6 +316,38 @@ fn display_gif_details(path: &Path) -> Result<(), SomeError> {
     Ok(())
 }
 
+// pub struct Rect<T: Clone + Integer> {
+//     top: T,
+//     left: T,
+//     bottom: T,
+//     right: T,
+// }
+//
+// macro_rules! rect_scale {
+//   ($orig: expr, $ratio: expr, $op1: expr, $op2: expr) => {
+//         Rect {
+//             top: $op1($ratio * &$orig.top).to_integer(),
+//             left: $op1($ratio * &$orig.left).to_integer(),
+//             bottom: $op2($ratio * &$orig.bottom).to_integer(),
+//             right: $op2($ratio * &$orig.right).to_integer(),
+//         }
+//     }
+//   }
+//
+// impl<T: Clone + Integer> Rect<T> {
+//     pub fn width(&self) -> T {
+//         self.left.clone() - self.right.clone()
+//     }
+//     pub fn height(&self) -> T {
+//         self.bottom.clone() - self.top.clone()
+//     }
+//     pub fn scale(&self, r: &Ratio<T>) -> Rect<T> {
+//         rect_scale!(&self, r, |r: Ratio<T>|r.round(), |r: Ratio<T>|r.round())
+//     }
+//     pub fn scale_loose(&self, r: &Ratio<T>) -> Rect<T> {
+//         rect_scale!(&self, r, |r: Ratio<T>|r.floor(), |r: Ratio<T>|r.ceil())
+//     }
+// }
 
 
 /// This isn't particularly optimized, but it should get the basic job done.
@@ -328,6 +362,8 @@ fn naive_resize(request: ResizeRequest) -> Result<Vec<u8>, SomeError> {
     let ratio_h = Ratio::from(request.target_h) / decoder.height();
     let ratio = ratio_w.min(ratio_h);
 
+    // let orig_frame = Rect { left: 0, top: 0, right: decoder.width(), bottom: decoder.height() };
+    // let orig_frame = Rect { left: 0, top: 0, right: decoder.width(), bottom: decoder.height() };
     let scale = |x: u16| (ratio * x).round();
 
     let mut accum: image::RgbaImage = image::ImageBuffer::from_pixel(
@@ -348,16 +384,17 @@ fn naive_resize(request: ResizeRequest) -> Result<Vec<u8>, SomeError> {
             &mut out,
             scaled_w.to_integer(),
             scaled_h.to_integer(),
-            // global_palette,
             &[],
         )?;
-        // default pixel?
         encoder.set_repeat(gif::Repeat::Infinite)?;
 
         while let Some(frame) = decoder.read_next_frame().unwrap_or(None) {
             let raw = frame.buffer.to_vec();
             let imagebuf =
-                image::RgbaImage::from_raw(frame.width as u32, frame.height as u32, raw).unwrap();
+                RgbaImage::from_raw(frame.width as u32, frame.height as u32, raw).unwrap();
+
+            // This seems to have less ringing when downscaling
+            let filter = FilterType::CatmullRom;
 
             if frame.dispose == DisposalMethod::Background {
                 for x in 0..accum.width() {
@@ -367,7 +404,8 @@ fn naive_resize(request: ResizeRequest) -> Result<Vec<u8>, SomeError> {
                 }
             }
 
-            if frame.dispose == DisposalMethod::Previous {
+            // Previous because we'll restore. Keep because we'll set up transparency...
+            if frame.dispose == DisposalMethod::Previous || frame.dispose == DisposalMethod::Keep {
                 for (x, y, pix) in restore.enumerate_pixels_mut() {
                     *pix = *accum.get_pixel(x, y);
                 }
@@ -402,38 +440,42 @@ fn naive_resize(request: ResizeRequest) -> Result<Vec<u8>, SomeError> {
                 &accum,
                 (ratio * accum.width() as u16).to_integer() as u32,
                 (ratio * accum.height() as u16).to_integer() as u32,
-                image::imageops::Nearest,
+                filter,
             );
-
-            // // Experiment to use a different filter while scaling the alpha channel.
-            // // Unfortunately this didn't seem to help much...
-            // let alpha = ImageBuffer::from_fn(
-            //     accum.width(),
-            //     accum.height(),
-            //     |x, y| image::Luma([accum.get_pixel(x, y)[3]]));
-            //
-            // let alpha = image::imageops::resize(&alpha,
-            //                                     (ratio * accum.width() as u16).to_integer() as u32,
-            //                                     (ratio * accum.height() as u16).to_integer() as u32,
-            //                                     image::imageops::Nearest);
-            // for (x, y, pix) in img.enumerate_pixels_mut() {
-            //     *pix = image::Rgba([pix[1], pix[0], pix[2], alpha.get_pixel(x, y)[0]]);
-            // }
 
             let scale_w = scale_right - scale_left;
             let scale_h = scale_bottom - scale_top;
             let img = image::imageops::crop_imm(&img, scale_left, scale_top, scale_w, scale_h);
+            let mut img: RgbaImage = img.to_image();
 
-            let mut img = img.to_image();
+            if None != frame.transparent && frame.dispose == DisposalMethod::Keep {
+                // Size optimization: Encode un-changed pixels with transparency
+                // FIXME: This can propagate color quantization errors which can be significant
+                //        when lower-quality quantization settings are used. We should instead
+                //        maintain a screen populated with the unpacked output frames to account
+                //        for this.
+                let prev: RgbaImage = image::imageops::resize(
+                    &restore,
+                    (ratio * restore.width() as u16).to_integer() as u32,
+                    (ratio * restore.height() as u16).to_integer() as u32,
+                    filter,
+                );
+                let prev = image::imageops::crop_imm(&prev, scale_left, scale_top, scale_w, scale_h);
+                let prev: RgbaImage = prev.to_image();
+                for (x, y, current) in img.enumerate_pixels_mut() {
+                    let prev = prev.get_pixel(x, y);
+                    if *prev == *current {
+                        *current = Rgba([0, 0, 0, 0]);
+                    }
+                }
+            }
 
-            // TODO: Consider keeping track of prior "keep" frames and setting matching pixels to
-            //       transparent to improve compression.
             let mut out_frame =
-                gif::Frame::from_rgba_speed(img.width() as u16, img.height() as u16, &mut img, 5);
+                gif::Frame::from_rgba_speed(img.width() as u16, img.height() as u16, &mut img, 1);
 
             out_frame.delay = frame.delay;
             out_frame.dispose = frame.dispose;
-
+            // out_frame.transparent
             out_frame.top = scale_top as u16;
             out_frame.left = scale_left as u16;
             encoder.write_frame(&out_frame)?;
@@ -448,7 +490,8 @@ fn naive_resize(request: ResizeRequest) -> Result<Vec<u8>, SomeError> {
         }
 
         if frame_idx == 0 {
-            // fixme add err?
+            // TODO: Return error if present...
+            // TODO: Should we render the background color?
             panic!("no frames");
         }
     }
@@ -486,7 +529,7 @@ fn read_write_fullframe(request: ResizeRequest) -> Result<Vec<u8>, SomeError> {
             let raw = frame.buffer.to_vec();
 
             let mut imagebuf =
-                image::RgbaImage::from_raw(u32::from(frame.width), u32::from(frame.height), raw)
+                RgbaImage::from_raw(u32::from(frame.width), u32::from(frame.height), raw)
                     .unwrap();
 
             // let mut colormapped = gif::Frame::from_rgba(frame.width, frame.height, &mut imagebuf);
