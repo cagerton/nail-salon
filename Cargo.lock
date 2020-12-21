@@ -201,13 +201,26 @@ name = "nail-salon"
 version = "0.2.6"
 dependencies = [
  "bincode",
+ "gif",
  "image",
  "kamadak-exif",
+ "num-rational",
  "serde",
  "serde-wasm-bindgen",
  "serde_bytes",
  "serde_derive",
  "wasm-bindgen",
+]
+
+[[package]]
+name = "num-bigint"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5e9a41747ae4633fce5adffb4d2e81ffc5e89593cb19917f8fb2cc5ff76507bf"
+dependencies = [
+ "autocfg",
+ "num-integer",
+ "num-traits",
 ]
 
 [[package]]
@@ -238,6 +251,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "12ac428b1cb17fce6f731001d307d351ec70a6d202fc2e60f7d4c5e42d8f4f07"
 dependencies = [
  "autocfg",
+ "num-bigint",
  "num-integer",
  "num-traits",
 ]

@@ -15,6 +15,13 @@ export function convert(request: ResizeRequest): ResizeResult {
   return cachedModule.convert(request);
 }
 
+export function resize_gif(input: Uint8Array, target_w: number, target_h: number): ArrayBufferLike {
+  if (!cachedModule)
+    cachedModule = require('../wasm/nail_salon');
+
+  return cachedModule.resize_gif(input, target_w, target_h);
+}
+
 export function image_info(input: Uint8Array): ImageInfo {
   if (!cachedModule)
     cachedModule = require('../wasm/nail_salon');
