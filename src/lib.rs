@@ -1,11 +1,10 @@
 #[macro_use]
 extern crate serde_derive;
-use image::codecs::jpeg::JpegDecoder;
-use image::gif::{GifDecoder, GifEncoder};
+use image::{codecs::jpeg::JpegDecoder};
 use image::imageops::FilterType;
+use image::codecs::gif::GifDecoder;
 use image::{
-    AnimationDecoder, ColorType, DynamicImage, Frame, GenericImageView, ImageDecoder, ImageFormat,
-    ImageOutputFormat,
+    ColorType, DynamicImage, GenericImageView, ImageDecoder, ImageFormat, AnimationDecoder, ImageOutputFormat
 };
 use std::convert::TryFrom;
 use std::io::Cursor;
@@ -123,12 +122,12 @@ fn get_orientation(input: &[u8]) -> Result<u32, exif::Error> {
 }
 
 fn _resize_frame(
-    frame: Frame,
+    frame: image::Frame,
     target_width: u32,
     target_height: u32,
     fill: bool,
     filter: FilterType,
-) -> Frame {
+) -> gif::Frame<'static> {
     let left = frame.left();
     let top = frame.top();
     let delay = frame.delay();
@@ -139,7 +138,22 @@ fn _resize_frame(
         false => img.resize_to_fill(target_width, target_height, filter),
     };
 
-    Frame::from_parts(resized.to_rgba(), left, top, delay)
+    let mut frame = gif::Frame::from_rgba(target_width as u16, target_height as u16, resized.to_rgba().into_raw().as_mut_slice());
+
+    let (num, den) = delay.numer_denom_ms();
+
+    frame.left = left as u16;
+    frame.top = top as u16;
+
+    frame.delay = (num / (den * 10)) as u16;
+    frame.dispose = gif::DisposalMethod::Background;
+
+    frame
+}
+
+pub enum MultiGifErr {
+    MultiErr,
+    EncodingError
 }
 
 fn _convert_gif(request: ResizeRequest) -> Result<ResizeResult, MultiErr> {
@@ -150,8 +164,8 @@ fn _convert_gif(request: ResizeRequest) -> Result<ResizeResult, MultiErr> {
     let (resized_w, resized_h) = match request.resize_op {
         ResizeType::Crop => (request.target_w as u32, request.target_h as u32),
         _ => scale_dimensions(
-            w,
-            h,
+            w as u32,
+            h as u32,
             request.target_w as u32,
             request.target_h as u32,
             request.resize_op.cover(),
@@ -159,22 +173,29 @@ fn _convert_gif(request: ResizeRequest) -> Result<ResizeResult, MultiErr> {
         ),
     };
 
-    let resized_frames = frames.map(|frame| match frame {
-        Ok(frame) => Ok(_resize_frame(
-            frame,
+    let mut out: Vec<u8> = vec![];
+
+    {
+        let mut encoder = gif::Encoder::new(
+            &mut out,
+            resized_w as u16,
+            resized_h as u16,
+                &[]
+        )?;
+
+        encoder.set_repeat(gif::Repeat::Infinite)?;
+
+        for frame in frames {
+          encoder.write_frame(&_resize_frame(
+            frame?,
             resized_w,
             resized_h,
             request.resize_op == ResizeType::Crop,
             request.scale_filter,
-        )),
-        _ => frame,
-    });
-
-    let mut out: Vec<u8> = Vec::new();
-    {
-        let mut encoder = GifEncoder::new(&mut out);
-        encoder.try_encode_frames(resized_frames)?;
+          ))?;
+        }
     }
+    
 
     Ok(ResizeResult {
         format: "GIF".to_string(),

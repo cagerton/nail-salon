@@ -201,6 +201,7 @@ name = "nail-salon"
 version = "0.2.4"
 dependencies = [
  "bincode",
+ "gif",
  "image",
  "kamadak-exif",
  "serde",
