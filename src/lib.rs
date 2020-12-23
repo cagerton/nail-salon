@@ -159,13 +159,23 @@ pub enum MultiGifErr {
 fn _convert_gif(request: ResizeRequest) -> Result<ResizeResult, MultiErr> {
     let decoder = GifDecoder::new(Cursor::new(&request.input))?;
     let (w, h) = decoder.dimensions();
+
+    if request.down_only && request.target_h >= h as u16 && request.target_w >= w as u16 {
+        return Ok(ResizeResult {
+            format: "GIF".to_string(),
+            output: request.input,
+            w: w as u16,
+            h: h as u16
+        })
+    }
+
     let frames = decoder.into_frames();
 
     let (resized_w, resized_h) = match request.resize_op {
         ResizeType::Crop => (request.target_w as u32, request.target_h as u32),
         _ => scale_dimensions(
-            w as u32,
-            h as u32,
+            w,
+            h,
             request.target_w as u32,
             request.target_h as u32,
             request.resize_op.cover(),
