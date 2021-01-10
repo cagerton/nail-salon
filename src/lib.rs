@@ -42,11 +42,6 @@ export function convert(req: ResizeRequest): ResizeResult;
 export function image_info(input: Uint8Array): ImageInfo;
 
 /**
- * Resize an animated gif to fit.
- */
-export function resize_gif(input: ArrayBufferLike, target_w: number, target_h: number): ArrayBufferLike;
-
-/**
  * NailSalon version
  */
 export function version(): String;
@@ -55,7 +50,6 @@ export function version(): String;
 interface ExposedFunctions {
   convert: typeof convert;
   image_info: typeof image_info;
-  resize_gif: typeof resize_gif;
   version: typeof version;
 }
 export type {ExposedFunctions};
@@ -295,162 +289,6 @@ pub fn scale_dimensions(
     let scaled_h = (ratio * orig_h).round().to_integer().max(1);
 
     (scaled_w, scaled_h)
-}
-
-#[wasm_bindgen(skip_typescript)]
-pub fn resize_gif(input: &[u8], target_w: u16, target_h: u16) -> Result<JsValue, JsValue> {
-    match resize_gif_animation_internal(input, target_w, target_h) {
-        Ok(result) => Ok(JsValue::from_serde(&result).unwrap()),
-        Err(err) => Err(err.into()),
-    }
-}
-
-/// WIP animated gif resizing
-fn resize_gif_animation_internal(
-    input: &[u8],
-    target_w: u16,
-    target_h: u16,
-) -> Result<Vec<u8>, MultiErr> {
-    let mut options = gif::DecodeOptions::new();
-    options.set_color_output(gif::ColorOutput::RGBA);
-
-    let curs = Cursor::new(&input);
-    let mut decoder = options.read_info(curs).unwrap();
-
-    let ratio_w = Ratio::from(target_w) / decoder.width();
-    let ratio_h = Ratio::from(target_h) / decoder.height();
-    let ratio = ratio_w.min(ratio_h);
-
-    let scale = |x: u16| (ratio * x).round();
-
-    let mut accum: image::RgbaImage = image::ImageBuffer::from_pixel(
-        u32::from(decoder.width()),
-        u32::from(decoder.height()),
-        Rgba::from([0, 0, 0, 0]),
-    );
-
-    let mut restore = accum.clone();
-
-    let scaled_w = scale(decoder.width());
-    let scaled_h = scale(decoder.height());
-
-    let mut frame_idx = 0;
-    let mut out = vec![];
-    {
-        let mut encoder =
-            gif::Encoder::new(&mut out, scaled_w.to_integer(), scaled_h.to_integer(), &[])?;
-        encoder.set_repeat(gif::Repeat::Infinite)?;
-
-        while let Some(frame) = decoder.read_next_frame().unwrap_or(None) {
-            let raw = frame.buffer.to_vec();
-            let imagebuf =
-                RgbaImage::from_raw(frame.width as u32, frame.height as u32, raw).unwrap();
-
-            // This seems to have less ringing when downscaling
-            let filter = FilterType::CatmullRom;
-
-            // TODO: consider just using gif disposal crate
-            if frame.dispose == DisposalMethod::Background {
-                for x in 0..accum.width() {
-                    for y in 0..accum.height() {
-                        *accum.get_pixel_mut(x as u32, y as u32) = Rgba([0, 0, 0, 0]);
-                    }
-                }
-            }
-
-            // Previous because we'll restore. Keep because we'll set up transparency...
-            if frame.dispose == DisposalMethod::Previous || frame.dispose == DisposalMethod::Keep {
-                for (x, y, pix) in restore.enumerate_pixels_mut() {
-                    *pix = *accum.get_pixel(x, y);
-                }
-            }
-            match frame.dispose {
-                gif::DisposalMethod::Keep | DisposalMethod::Background => {
-                    for (x, y, pixel) in imagebuf.enumerate_pixels() {
-                        let ap = accum.get_pixel_mut(frame.left as u32 + x, frame.top as u32 + y);
-                        if pixel[3] != 0x00 {
-                            *ap = *pixel;
-                        }
-                    }
-                }
-                _ => {
-                    for (x, y, pixel) in imagebuf.enumerate_pixels() {
-                        let ap = accum.get_pixel_mut(frame.left as u32 + x, frame.top as u32 + y);
-                        *ap = *pixel;
-                    }
-                }
-            };
-
-            let scale_top = (ratio * frame.top).to_integer() as u32;
-            let scale_left = (ratio * frame.left).to_integer() as u32;
-            let scale_bottom = (ratio * (frame.top + frame.height)).ceil().to_integer() as u32;
-            let scale_right = (ratio * (frame.left + frame.width)).ceil().to_integer() as u32;
-
-            // TODO: We use the Nearest filter because it doesn't produce artifacts at the edge
-            //       of transparent regions.  We may want to revisit and either implement a more
-            //       complex filter or switch based on the input.
-            let img = image::imageops::resize(
-                &accum,
-                (ratio * accum.width() as u16).to_integer() as u32,
-                (ratio * accum.height() as u16).to_integer() as u32,
-                filter,
-            );
-
-            let scale_w = scale_right - scale_left;
-            let scale_h = scale_bottom - scale_top;
-            let img = image::imageops::crop_imm(&img, scale_left, scale_top, scale_w, scale_h);
-            let mut img: RgbaImage = img.to_image();
-
-            if None != frame.transparent && frame.dispose == DisposalMethod::Keep {
-                // Size optimization: Encode un-changed pixels with transparency
-                // FIXME: This can propagate color quantization errors which can be significant
-                //        when lower-quality quantization settings are used. We should instead
-                //        maintain a screen populated with the unpacked output frames to account
-                //        for this.
-                let prev: RgbaImage = image::imageops::resize(
-                    &restore,
-                    (ratio * restore.width() as u16).to_integer() as u32,
-                    (ratio * restore.height() as u16).to_integer() as u32,
-                    filter,
-                );
-                let prev =
-                    image::imageops::crop_imm(&prev, scale_left, scale_top, scale_w, scale_h);
-                let prev: RgbaImage = prev.to_image();
-                for (x, y, current) in img.enumerate_pixels_mut() {
-                    let prev = prev.get_pixel(x, y);
-                    if *prev == *current {
-                        *current = Rgba([0, 0, 0, 0]);
-                    }
-                }
-            }
-
-            let mut out_frame =
-                gif::Frame::from_rgba_speed(img.width() as u16, img.height() as u16, &mut img, 1);
-
-            out_frame.delay = frame.delay;
-            out_frame.dispose = frame.dispose;
-            // out_frame.transparent
-            out_frame.top = scale_top as u16;
-            out_frame.left = scale_left as u16;
-            encoder.write_frame(&out_frame)?;
-            frame_idx += 1;
-
-            if frame.dispose == DisposalMethod::Previous {
-                for (x, y, pix) in restore.enumerate_pixels() {
-                    let target = accum.get_pixel_mut(x, y);
-                    *target = *pix;
-                }
-            }
-        }
-
-        if frame_idx == 0 {
-            // TODO: Return error if present...
-            // TODO: Should we render the background color?
-            panic!("no frames");
-        }
-    }
-
-    Ok(out)
 }
 
 #[cfg(test)]
