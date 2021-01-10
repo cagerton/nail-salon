@@ -13,7 +13,7 @@ import {ImageWorkerPool, defaultOptions} from 'nail-salon';
 import path from 'path';
 
 // Move work off of the main thread and impose time limits using an ImageWorkerPool
-const pool = new ImageWorkerPool(2);
+const pool = new ImageWorkerPool(2, 10000);
 
 async function handleImage(original: string) {
   const {output, ...details} = await pool.convert({
@@ -21,6 +21,7 @@ async function handleImage(original: string) {
     input: fs.readFileSync(original),
     target_h: 256,
     target_w: 256,
+    support_animations: true,
   });
   const {dir, name} = path.parse(original);
   const destination = `${dir}/${name}_thumb.${details.format.toLocaleLowerCase()}`;
@@ -48,6 +49,9 @@ node -r ts-node/register bench/bench.ts
 ```
 
 ## Changes
+
+### 0.2.7
+* Add basic support for resizing animated gifs. Note that this is can be slow and may not produce optimally compressed output.
 
 ### 0.2.6
 * Use 8bit pixel depth for thumbnail encoding. Fixes an issue that was reported with 16bit depth PNG images.

@@ -49,6 +49,7 @@ export function scale_and_orient(
     jpeg_quality: 80,
     resize_op: cover ? ResizeOp.Cover : ResizeOp.Fit,
     output_format: OutputFormat.Auto,
+    support_animation: false,
   });
   return res.output;
 }

@@ -43,6 +43,7 @@ export interface ResizeRequest {
   scale_filter: ScaleFilter;
   output_format: OutputFormat;
   jpeg_quality: number;
+  support_animation: boolean;
 }
 
 export interface ResizeResult {

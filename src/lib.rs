@@ -1,18 +1,14 @@
 #[macro_use]
 extern crate serde_derive;
 use image::codecs::jpeg::JpegDecoder;
-use image::imageops::FilterType;
 use image::{
-    ColorType, DynamicImage, GenericImageView, ImageDecoder, ImageFormat, ImageOutputFormat, Rgba,
-    RgbaImage,
+    ColorType, DynamicImage, GenericImageView, ImageDecoder, ImageFormat, ImageOutputFormat,
 };
+use num_rational::Ratio;
 use std::convert::TryFrom;
 use std::io::Cursor;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsValue;
-
-use gif::DisposalMethod;
-use num_rational::Ratio;
 
 mod errors;
 mod giflib;
@@ -248,8 +244,7 @@ pub fn _image_info(input: &[u8]) -> Result<ImageInfo, MultiErr> {
 }
 
 /// Treats any gif with multiple frames as an animated gif.
-/// TODO: consider reading repeat/confirming that multiple frames aren't commonly used for
-///       other purposes...
+/// TODO: confirm that multiple frames aren't commonly used for other purposes.
 fn is_animated_gif(input: &[u8]) -> Result<bool, gif::DecodingError> {
     let mut d = gif::Decoder::new(Cursor::new(&input))?;
     d.next_frame_info()?;

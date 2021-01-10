@@ -1,9 +1,8 @@
 import * as fs from 'fs';
 import {performance} from 'perf_hooks';
 import {EventEmitter, once} from "events";
-import {defaultOptions, ImageWorkerPool, resize_gif,} from "../dist/lib";
+import {defaultOptions, ImageWorkerPool} from "../dist/lib";
 import {ResizeOp} from "../dist/lib";
-
 
 function* genFiles(...dirs: string[]) {
   for (const dir of dirs) {
@@ -36,7 +35,7 @@ async function main() {
     timing: 0,
   };
 
-  const src_dir = `${__dirname}/../toy2/sample_images`;
+  const src_dir = `${__dirname}/lcwa_gov_image_data/data`;
 
   let running = 0;
   const sync = new EventEmitter();
@@ -44,8 +43,6 @@ async function main() {
   const errLog = new Array<string>();
 
   for (const [in_dir, file] of genFiles(src_dir)) {
-    if (!file.endsWith('.gif'))
-      continue;
     const origPath = `${in_dir}/${file}`;
     const outPath = `${out_dir}/${file}`;
     const badPath = `${bad_dir}/${file}`;
@@ -62,7 +59,8 @@ async function main() {
           input: raw,  // TODO: Investigate extra failures when using raw.buffer vs buffer
           target_h: 512,
           target_w: 512,
-          resize_op: ResizeOp.Fit
+          resize_op: ResizeOp.Fit,
+          support_animation: true,
         };
         imgStart = performance.now();
 
@@ -71,11 +69,7 @@ async function main() {
         // } catch (e) {
         //   return Promise.reject(e);
         // }
-
-
-        return Promise.resolve({output: Buffer.from(resize_gif(raw, 64, 64))})
-
-        // return worker.convert(req);
+        return worker.convert(req);
       })
       .then(res => {
         const timing = performance.now() - imgStart;
