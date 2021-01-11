@@ -59,7 +59,8 @@ async function main() {
           input: raw,  // TODO: Investigate extra failures when using raw.buffer vs buffer
           target_h: 512,
           target_w: 512,
-          resize_op: ResizeOp.Fit
+          resize_op: ResizeOp.Fit,
+          support_animation: true,
         };
         imgStart = performance.now();
 

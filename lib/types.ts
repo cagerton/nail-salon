@@ -43,11 +43,13 @@ export interface ResizeRequest {
   scale_filter: ScaleFilter;
   output_format: OutputFormat;
   jpeg_quality: number;
+  support_animation: boolean;
 }
 
 export interface ResizeResult {
   output: ArrayBufferLike;
   format: OutputFormat;
+  version: string;
   w: number;
   h: number;
 }
@@ -56,6 +58,7 @@ export interface ImageInfo {
   format: string;
   width: number;
   height: number;
+  animated: boolean;
 }
 
 export const defaultOptions = Object.freeze({
@@ -65,6 +68,7 @@ export const defaultOptions = Object.freeze({
     jpeg_quality: 80,
     resize_op: ResizeOp.Fit,
     output_format: OutputFormat.Auto,
+    support_animation: false,
   }
 );
 

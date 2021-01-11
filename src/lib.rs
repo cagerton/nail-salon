@@ -1,17 +1,26 @@
 #[macro_use]
 extern crate serde_derive;
 use image::codecs::jpeg::JpegDecoder;
-use image::imageops::FilterType;
 use image::{
     ColorType, DynamicImage, GenericImageView, ImageDecoder, ImageFormat, ImageOutputFormat,
 };
+use num_rational::Ratio;
 use std::convert::TryFrom;
 use std::io::Cursor;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsValue;
 
 mod errors;
+mod giflib;
+mod utils;
+
 use errors::MultiErr;
+use utils::*;
+
+#[wasm_bindgen]
+pub fn version() -> String {
+    utils::VERSION.into()
+}
 
 // TODO: Generate TS definitions
 #[wasm_bindgen(typescript_custom_section)]
@@ -28,83 +37,35 @@ export function convert(req: ResizeRequest): ResizeResult;
  */
 export function image_info(input: Uint8Array): ImageInfo;
 
+/**
+ * NailSalon version
+ */
+export function version(): String;
+
 // Expose type exports for deferred loading
 interface ExposedFunctions {
   convert: typeof convert;
   image_info: typeof image_info;
+  version: typeof version;
 }
 export type {ExposedFunctions};
 "#;
-
-#[derive(Serialize)]
-pub struct ImageInfo {
-    format: String,
-    width: u32,
-    height: u32,
-}
-
-#[derive(Deserialize)]
-pub struct ResizeRequest {
-    #[serde(with = "serde_bytes")]
-    input: Vec<u8>,
-    resize_op: ResizeType,
-
-    target_w: u16,
-    target_h: u16,
-    down_only: bool,
-
-    jpeg_scaling: bool,
-    #[serde(with = "FilterOption")]
-    scale_filter: FilterType,
-
-    output_format: OutputFormat,
-    jpeg_quality: u8,
-}
-
-#[derive(Deserialize, Serialize)]
-pub enum OutputFormat {
-    JPEG,
-    PNG,
-    Auto,
-}
-
-#[derive(Deserialize)]
-#[serde(remote = "FilterType")]
-pub enum FilterOption {
-    Nearest,
-    Triangle,
-    CatmullRom,
-    Gaussian,
-    Lanczos3,
-}
-
-#[derive(Deserialize)]
-pub enum ResizeType {
-    Fit,
-    Cover,
-    Crop,
-}
-
-impl ResizeType {
-    fn cover(&self) -> bool {
-        !matches!(*self, ResizeType::Fit)
-    }
-}
-
-#[derive(Serialize)]
-pub struct ResizeResult {
-    #[serde(with = "serde_bytes")]
-    output: Vec<u8>,
-    format: String,
-    w: u16,
-    h: u16,
-}
 
 #[wasm_bindgen(skip_typescript)]
 pub fn convert(val: JsValue) -> Result<JsValue, JsValue> {
     let parsed: ResizeRequest = serde_wasm_bindgen::from_value(val)?;
 
     match _convert(parsed) {
+        Ok(result) => Ok(serde_wasm_bindgen::to_value(&result)?),
+        Err(err) => Err(err.into()),
+    }
+}
+
+#[wasm_bindgen(skip_typescript)]
+pub fn resize_animation(val: JsValue) -> Result<JsValue, JsValue> {
+    let parsed: ResizeRequest = serde_wasm_bindgen::from_value(val)?;
+
+    match giflib::resize_animation(parsed) {
         Ok(result) => Ok(serde_wasm_bindgen::to_value(&result)?),
         Err(err) => Err(err.into()),
     }
@@ -120,6 +81,13 @@ fn get_orientation(input: &[u8]) -> Result<u32, exif::Error> {
 
 fn _convert(request: ResizeRequest) -> Result<ResizeResult, MultiErr> {
     let in_fmt = image::guess_format(&request.input)?;
+
+    if request.support_animation
+        && in_fmt == ImageFormat::Gif
+        && is_animated_gif(&request.input).unwrap_or(false)
+    {
+        return giflib::resize_animation(request);
+    }
 
     let orientation = if in_fmt == ImageFormat::Jpeg {
         get_orientation(&request.input).unwrap_or(0)
@@ -225,6 +193,7 @@ fn _convert(request: ResizeRequest) -> Result<ResizeResult, MultiErr> {
     Ok(ResizeResult {
         format: fmt_name.into(),
         output: out,
+        version: VERSION.into(),
         w: u16::try_from(w).unwrap(),
         h: u16::try_from(h).unwrap(),
     })
@@ -249,9 +218,17 @@ pub fn _image_info(input: &[u8]) -> Result<ImageInfo, MultiErr> {
                 format: "unknown".to_string(),
                 width: 0,
                 height: 0,
+                animated: false,
             })
         }
         Some(fmt) => fmt,
+    };
+
+    let animated = if ImageFormat::Gif == fmt {
+        is_animated_gif(&input)?
+    } else {
+        // TODO: add support for other formats
+        false
     };
 
     let mut format: String = format!("{:?}", fmt);
@@ -262,6 +239,18 @@ pub fn _image_info(input: &[u8]) -> Result<ImageInfo, MultiErr> {
         format,
         width,
         height,
+        animated,
+    })
+}
+
+/// Treats any gif with multiple frames as an animated gif.
+/// TODO: confirm that multiple frames aren't commonly used for other purposes.
+fn is_animated_gif(input: &[u8]) -> Result<bool, gif::DecodingError> {
+    let mut d = gif::Decoder::new(Cursor::new(&input))?;
+    d.next_frame_info()?;
+    Ok(match d.next_frame_info()? {
+        Some(_) => true,
+        _ => false,
     })
 }
 
@@ -273,8 +262,8 @@ pub fn scale_dimensions(
     cover: bool,
     down_only: bool,
 ) -> (u32, u32) {
-    let h_ratio = target_h as f64 / orig_h as f64;
-    let w_ratio = target_w as f64 / orig_w as f64;
+    let h_ratio = Ratio::new(target_h, orig_h);
+    let w_ratio = Ratio::new(target_w, orig_w);
 
     // default (shrink to fit) mode prefers to scale by the smaller ratio,
     // whereas cover mode scales by the larger ratio
@@ -284,13 +273,15 @@ pub fn scale_dimensions(
         h_ratio.min(w_ratio)
     };
 
-    if down_only && ratio > 1.0 {
-        return (orig_w, orig_h);
-    }
+    let ratio = if down_only {
+        ratio.min(Ratio::from_integer(1))
+    } else {
+        ratio
+    };
 
     // keep at least one pixel
-    let scaled_w = (orig_w as f64 * ratio).round().max(1.0) as u32;
-    let scaled_h = (orig_h as f64 * ratio).round().max(1.0) as u32;
+    let scaled_w = (ratio * orig_w).round().to_integer().max(1);
+    let scaled_h = (ratio * orig_h).round().to_integer().max(1);
 
     (scaled_w, scaled_h)
 }

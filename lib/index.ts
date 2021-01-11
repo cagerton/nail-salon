@@ -15,6 +15,13 @@ export function convert(request: ResizeRequest): ResizeResult {
   return cachedModule.convert(request);
 }
 
+export function version() {
+  if (!cachedModule)
+    cachedModule = require('../wasm/nail_salon');
+
+  return cachedModule.version();
+}
+
 export function image_info(input: Uint8Array): ImageInfo {
   if (!cachedModule)
     cachedModule = require('../wasm/nail_salon');
@@ -42,6 +49,7 @@ export function scale_and_orient(
     jpeg_quality: 80,
     resize_op: cover ? ResizeOp.Cover : ResizeOp.Fit,
     output_format: OutputFormat.Auto,
+    support_animation: false,
   });
   return res.output;
 }
