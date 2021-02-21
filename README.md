@@ -50,6 +50,10 @@ node -r ts-node/register bench/bench.ts
 
 ## Changes
 
+### 0.2.8
+* Use a macro to generate the error enum. h/t @drakedevel
+* Update dependencies
+
 ### 0.2.7
 * Add basic support for resizing animated gifs. Note that this is can be slow and may not produce optimally compressed output.
 
