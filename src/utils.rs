@@ -2,7 +2,7 @@ use image::imageops::FilterType;
 
 pub static VERSION: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 pub struct ImageInfo {
     pub format: String,
     pub animated: bool,

@@ -289,6 +289,7 @@ pub fn scale_dimensions(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use image::{ImageBuffer, Rgba};
 
     #[test]
     fn test_scale_dimensions() {
@@ -324,5 +325,44 @@ mod tests {
         assert_eq!(scale_dimensions(16, 8, 32, 32, false, false), (32, 16));
         assert_eq!(scale_dimensions(1, 512, 32, 32, false, false), (1, 32));
         assert_eq!(scale_dimensions(512, 1, 32, 32, false, false), (32, 1));
+    }
+
+    #[test]
+    fn test_convert_and_info() {
+        // Create a JPG
+        let img = ImageBuffer::from_pixel(100, 100, Rgba::<u8>([0, 0, 0, 255]));
+        let img = DynamicImage::ImageRgba8(img);
+        let mut raw_jpg = vec![];
+        img.write_to(&mut raw_jpg, ImageOutputFormat::Jpeg(80))
+            .unwrap();
+
+        // Read the JPEG
+        let info = _image_info(&raw_jpg.as_slice()).unwrap();
+        assert_eq!(info.format, "jpeg");
+        assert_eq!(info.height, 100);
+        assert_eq!(info.width, 100);
+        assert_eq!(info.animated, false);
+
+        // Convert to PNG
+        let res = _convert(ResizeRequest {
+            input: raw_jpg,
+            resize_op: ResizeType::Fit,
+            target_h: 64,
+            target_w: 64,
+            down_only: true,
+            jpeg_quality: 80,
+            jpeg_scaling: false,
+            scale_filter: image::imageops::CatmullRom,
+            output_format: OutputFormat::PNG,
+            support_animation: false,
+        })
+        .unwrap();
+
+        // Confirm that the output is as expected
+        let info = _image_info(&res.output.as_slice()).unwrap();
+        assert_eq!(info.format, "png");
+        assert_eq!(info.height, 64);
+        assert_eq!(info.width, 64);
+        assert_eq!(info.animated, false);
     }
 }
