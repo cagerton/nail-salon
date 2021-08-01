@@ -50,6 +50,10 @@ node -r ts-node/register bench/bench.ts
 
 ## Changes
 
+### 0.2.9
+* Update dependencies
+* Minor fixes for clippy warnings and new TS errors
+
 ### 0.2.8
 * Use a macro to generate the error enum. h/t @drakedevel
 * Update dependencies

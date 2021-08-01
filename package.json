@@ -19,7 +19,7 @@
     "./package.json": "./package.json"
   },
   "types": "./dist/lib/index.d.ts",
-  "version": "0.2.8",
+  "version": "0.2.9",
   "devDependencies": {
     "@types/node": "^12.20.17",
     "ndb": "^1.1.5",
