@@ -4,7 +4,7 @@ import {eachEvent} from "./util";
 import type {ResizeResult, WorkerRequest} from './types';
 
 function isRequest(value: unknown): value is WorkerRequest {
-  return value && typeof value === 'object' && 'taskId' in value && 'req' in value;
+  return Boolean(value && typeof value === 'object' && 'taskId' in value && 'req' in value);
 }
 
 async function workerMain() {

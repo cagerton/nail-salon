@@ -85,7 +85,7 @@ impl RenderedFrame {
         for pix in rendered.pixels_mut() {
             // 0x80 is an arbitrary threshold; ie: if opacity is at least 50% we'll keep the pixel
             // if pix[3] != 0 && pix[3] != 255 {
-            *pix = flatten_alpha_depth(&pix);
+            *pix = flatten_alpha_depth(pix);
             // }
         }
 
@@ -125,7 +125,7 @@ impl<T: Read> Iterator for FrameIter<T> {
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(frame) = self.decoder.read_next_frame().unwrap_or(None) {
-            let img = self.screen.blit_frame(&frame).unwrap();
+            let img = self.screen.blit_frame(frame).unwrap();
             let pix_buf: Vec<u8> = img.into_iter().flat_map(|pix| pix.iter()).collect();
             let rendered = ImageBuffer::from_vec(
                 self.screen.pixels.width() as u32,

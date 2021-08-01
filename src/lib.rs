@@ -225,7 +225,7 @@ pub fn _image_info(input: &[u8]) -> Result<ImageInfo, MultiErr> {
     };
 
     let animated = if ImageFormat::Gif == fmt {
-        is_animated_gif(&input)?
+        is_animated_gif(input)?
     } else {
         // TODO: add support for other formats
         false
@@ -248,10 +248,7 @@ pub fn _image_info(input: &[u8]) -> Result<ImageInfo, MultiErr> {
 fn is_animated_gif(input: &[u8]) -> Result<bool, gif::DecodingError> {
     let mut d = gif::Decoder::new(Cursor::new(&input))?;
     d.next_frame_info()?;
-    Ok(match d.next_frame_info()? {
-        Some(_) => true,
-        _ => false,
-    })
+    Ok(matches!(d.next_frame_info()?, Some(_)))
 }
 
 pub fn scale_dimensions(
