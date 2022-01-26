@@ -50,6 +50,10 @@ node -r ts-node/register bench/bench.ts
 
 ## Changes
 
+### 0.2.10
+* Update dependencies
+* Set license field in package.json
+
 ### 0.2.9
 * Update dependencies
 * Minor fixes for clippy warnings and new TS errors

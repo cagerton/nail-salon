@@ -5,7 +5,6 @@ version = "0.2.9"
 authors = ["Chris Agerton <cagerton@gmail.com>"]
 edition = "2018"
 license = "Apache-2.0"
-license-file = "LICENSE-APACHE"
 repository = "https://github.com/cagerton/nail-salon"
 homepage = "https://github.com/cagerton/nail-salon"
 
@@ -20,7 +19,7 @@ kamadak-exif = "^0.5"
 num-rational = "0.3"
 
 gif="0.11"
-gif-dispose="3.0.1"
+gif-dispose="3.0"
 
 
 [dependencies.image]

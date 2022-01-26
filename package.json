@@ -18,17 +18,17 @@
     "./lib/types": "./dist/lib/types.js",
     "./package.json": "./package.json"
   },
+  "license": "Apache-2.0",
   "types": "./dist/lib/index.d.ts",
-  "version": "0.2.9",
+  "version": "0.2.10",
   "devDependencies": {
-    "@types/node": "^12.20.17",
-    "ndb": "^1.1.5",
-    "ts-node": "^10.1.0",
-    "typescript": "^4.3.5"
+    "@types/node": "^12.20.42",
+    "ts-node": "^10.4.0",
+    "typescript": "^4.5.5"
   },
   "dependencies": {
-    "source-map-support": "^0.5.19",
-    "tslib": "^2.3.0"
+    "source-map-support": "^0.5.21",
+    "tslib": "^2.3.1"
   },
   "scripts": {
     "build": "./build.sh",

@@ -22,7 +22,7 @@ async function workerMain() {
       res = convert(req);
       parentPort.postMessage({taskId, res});
     } catch (err) {
-      parentPort.postMessage({taskId, err: new Error(err)});
+      parentPort.postMessage({taskId, err: new Error(String(err))});
     }
   }
 }
