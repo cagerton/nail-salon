@@ -50,6 +50,9 @@ node -r ts-node/register bench/bench.ts
 
 ## Changes
 
+### 0.2.11
+* Update package.json metadata
+
 ### 0.2.10
 * Update dependencies
 * Set license field in package.json

@@ -4,7 +4,14 @@
     "Chris Agerton <cagerton@gmail.com>"
   ],
   "description": "The safest place to get your nails done",
+  "license": "Apache-2.0",
+  "repository": "github:cagerton/nail-salon",
+  "homepage": "https://github.com/cagerton/nail-salon#readme",
+  "version": "0.2.11",
   "main": "./dist/lib/index",
+  "bugs": {
+    "url" : "https://github.com/cagerton/nail-salon/issues"
+  },
   "files": [
     "dist",
     "wasm_dist",
@@ -18,9 +25,7 @@
     "./lib/types": "./dist/lib/types.js",
     "./package.json": "./package.json"
   },
-  "license": "Apache-2.0",
   "types": "./dist/lib/index.d.ts",
-  "version": "0.2.10",
   "devDependencies": {
     "@types/node": "^12.20.42",
     "ts-node": "^10.4.0",
