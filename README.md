@@ -51,7 +51,7 @@ node -r ts-node/register bench/bench.ts
 ## Changes
 
 ### 0.2.12
-* Update dependencies
+* Update dependencies, including a security update for bumpalo
 
 ### 0.2.11
 * Update package.json metadata
