@@ -7,7 +7,7 @@
   "license": "Apache-2.0",
   "repository": "github:cagerton/nail-salon",
   "homepage": "https://github.com/cagerton/nail-salon#readme",
-  "version": "0.2.11",
+  "version": "0.2.12",
   "main": "./dist/lib/index",
   "bugs": {
     "url" : "https://github.com/cagerton/nail-salon/issues"
